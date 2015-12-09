@@ -48,7 +48,7 @@ The following figure presents the performance top 5 aggregation strategies withi
 
 ```{r plots-training}
 agg.sub = subset(binded.stats.all.perf,
-                 Measure==PERFORMANCE.MEASURE & Class=="Aggregation") %>%
+                 Measure==PERFORMANCE.MEASURE & Class=='Aggregation') %>%
           group_by(Class, Subclass, Subsubclass)
 
 bestAggregators = NA
@@ -58,7 +58,7 @@ if (PERFORMANCE.MEASURE.DESC) {
     bestAggregators = top_n(agg.sub, 5, -Value.training)$Method }
 
 plotStatsTrainingSet(subset(training.stats.all,
-                            Method %in% bestAggregators | Class=="Model"),
+                            Method %in% bestAggregators | Class=="Model" | Class=="Similarity"),
                      PERFORMANCE.MEASURE)
 ```
 
@@ -81,11 +81,11 @@ plotStatsTestSet(test.stats.all,
 The left part of the following figure compares the total cost performance on the test set of the
 aggreagation strategies which fulfil medical requirements in the diagnostic process. The right part
 compares accuracy, sensitivity, specificity and decisiveness on these aggregation strategies. 
-
+ 
 ```{r plots-selected}
-plotSelectedAggregationOperators(selected.aggrs,
-                                 PERFORMANCE.MEASURE, 
-                                 c("Sensitivity", "Specificity", "Decisiveness", "Accuracy"))
+# plotSelectedAggregationOperators(selected.aggrs,
+#                                  PERFORMANCE.MEASURE, 
+#                                  c("Sensitivity", "Specificity", "Decisiveness", "Accuracy"))
 ```
 
 ## Difference between aggregation strategies and uncertaintified models
@@ -95,24 +95,24 @@ strategies and with relation to the uncertaintified models. The `NaN` values ind
 that in a given pair of methods classify identically.
 
 ```{r mcnemar-pvals}
-library(knitr)
-library(dplyr)
-
-desc = AGGREGATORS.BINDED.DESCRIPTION %>% 
-       filter(Method %in% colnames(pvals))
-legend = data.frame(Id=LETTERS[1:length(colnames(pvals))], 
-                    Method=colnames(pvals))
-
-kable(join(legend, desc, by="Method"), 
-      caption="Legend: short ids for selected aggregation strategies", align='l')
-colnames(pvals) = LETTERS[1:length(colnames(pvals))]
-rownames(pvals) = gsub("unc. ", "", rownames(pvals))
-rownames(pvals) = c(LETTERS[1:length(colnames(pvals))],
-                    rownames(pvals)[(length(colnames(pvals))+1):length(rownames(pvals))])
-
-pvals3 = round(pvals,3)
-pvals3[is.na(pvals) & !is.nan(pvals)]=""
-pvals3 = gsub("^0$", "0.000", pvals3, perl=T)
-pvals3 = gsub("^1$", "1.000", pvals3, perl=T)
-kable(pvals3, caption="McNemar's test with Benjamini-Hochberg correction among selected aggregation strategies and bettwen the strageties and the uncertaintified models")
+# library(knitr)
+# library(dplyr)
+# 
+# desc = AGGREGATORS.BINDED.DESCRIPTION %>% 
+#        filter(Method %in% colnames(pvals))
+# legend = data.frame(Id=LETTERS[1:length(colnames(pvals))], 
+#                     Method=colnames(pvals))
+# 
+# kable(join(legend, desc, by="Method"), 
+#       caption="Legend: short ids for selected aggregation strategies", align='l')
+# colnames(pvals) = LETTERS[1:length(colnames(pvals))]
+# rownames(pvals) = gsub("unc. ", "", rownames(pvals))
+# rownames(pvals) = c(LETTERS[1:length(colnames(pvals))],
+#                     rownames(pvals)[(length(colnames(pvals))+1):length(rownames(pvals))])
+# 
+# pvals3 = round(pvals,3)
+# pvals3[is.na(pvals) & !is.nan(pvals)]=""
+# pvals3 = gsub("^0$", "0.000", pvals3, perl=T)
+# pvals3 = gsub("^1$", "1.000", pvals3, perl=T)
+# kable(pvals3, caption="McNemar's test with Benjamini-Hochberg correction among selected aggregation strategies and bettwen the strageties and the uncertaintified models")
 ```

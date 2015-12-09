@@ -92,7 +92,31 @@ plotStatsTrainingSet = function(stats, performanceMeasure)
         scale_x_continuous(breaks=BREAKS.X) +
         scale_color_manual(values=colorRampPalette(brewer.pal(9, "Paired"))(length(unique(stats$Method))))
 
-    grid.arrange(arrangeGrob(a, b, nrow=1),
+    # Similarities
+    d = ggplot(data=subset(stats, Class=="Similarity" & Subclass=="knn" & Measure==performanceMeasure),
+               aes(x=ObscureLevel, y=Value, group=Method, colour=Method, shape=Method, fill=Method)) +
+        geom_line() +
+        geom_point(size=3, color="black") +
+        ggtitle("Original models") +
+        scale_shape_manual(values=shapes.ids) +
+        scale_color_manual(values=c("#D73027","#FC8D59","#FCBE23","#77D9F4","#91BFDB","#91BFDB")) +
+        scale_fill_brewer(palette = "RdYlBu") +
+        xlab("Level of missing data") +
+        ylab(ifelse(performanceMeasure=="Cost matrix", "Total cost", performanceMeasure)) +
+        theme_bw() +
+        theme(legend.position="bottom",
+              plot.margin=unit(c(0.02, 0.05, 0.00, 0.05), "npc"),
+              legend.margin=unit(0.05, "npc"),
+              panel.margin = unit(0.07, "npc"),
+              axis.text.x=element_text(size=9),
+              strip.text.x=element_text(size=9),
+              axis.title.x = element_text(vjust=-0.5),
+              axis.title.y = element_text(vjust=1.5),
+              title = element_text(vjust=1.2)) +
+        coord_cartesian(xlim=LIM.X, ylim=c(50, ymax.val)) +
+        scale_x_continuous(breaks=BREAKS.X)
+
+    grid.arrange(arrangeGrob(a, b, d, nrow=1),
                  arrangeGrob(c, nrow=1),
                  nrow=2, heights=unit(c(0.45, 0.45), "npc"))
 
