@@ -1,6 +1,6 @@
 PackratFormat: 1.4
 PackratVersion: 0.4.3
-RVersion: 3.1.2
+RVersion: 3.2.2
 Repos: CRAN=http://cran.rstudio.com,
     BioCsoft=http://bioconductor.org/packages/3.0/bioc,
     BioCann=http://bioconductor.org/packages/3.0/data/annotation,
@@ -53,8 +53,8 @@ Requires: bitops
 
 Package: Rcpp
 Source: CRAN
-Version: 0.11.6
-Hash: 004f4ffa4d0f4a3d177f2090799225e8
+Version: 0.12.2
+Hash: e03b48067b288bf916e90e8e5e317aab
 
 Package: assertthat
 Source: CRAN
@@ -89,14 +89,14 @@ Hash: 89dc4c8734dad5322bb3c5c2af09056f
 
 Package: dplyr
 Source: CRAN
-Version: 0.4.1
-Hash: 4ce20c40c8a1adf59071cf9616cbcec5
+Version: 0.4.3
+Hash: 8ba5721f34a2802f0eb0f5fe47f3f723
 Requires: BH, DBI, R6, Rcpp, assertthat, lazyeval, magrittr
 
 Package: evaluate
 Source: CRAN
-Version: 0.7
-Hash: 96c38894bf65a2e890f7c6ec840a6466
+Version: 0.8
+Hash: fc2cfbbd9fc4df850c1b4c799463891d
 Requires: stringr
 
 Package: formatR
@@ -133,8 +133,8 @@ Requires: digest
 
 Package: knitr
 Source: CRAN
-Version: 1.10.5
-Hash: e2d3a7715a4dfbe69940f054799ce95c
+Version: 1.11
+Hash: d31c77797f1724e0588013ae84e61c69
 Requires: digest, evaluate, formatR, highr, markdown, stringr, yaml
 
 Package: labeling
@@ -182,7 +182,7 @@ Hash: 16c72d5c802629fae5a4abca901e0199
 Package: plyr
 Source: CRAN
 Version: 1.8.2
-Hash: 70681a5a00608b6137b753e1b5994e4a
+Hash: 841fb21a1e0fb6c36228815119416d6a
 Requires: Rcpp
 
 Package: proto
@@ -193,26 +193,26 @@ Hash: 668a9e87cedbdc5f56c396edf1bd2648
 Package: reshape2
 Source: CRAN
 Version: 1.4.1
-Hash: e207efbaabcdff1aa2bc697369b62b0c
+Hash: 1b2d31d38f1f0e9974a73d7968dfa6fe
 Requires: Rcpp, plyr, stringr
 
 Package: rmarkdown
 Source: CRAN
-Version: 0.6.1
-Hash: 28aee1f631ae3ba9a2858e737f6db66b
+Version: 0.8.1
+Hash: 9e87ecbc173a5ea0f041bfb89d0af714
 Requires: caTools, htmltools, knitr, yaml
 
 Package: sampling
 Source: CRAN
-Version: 2.6
-Hash: 1e9031c2058efb5f0c707dab6b40421d
+Version: 2.7
+Hash: be7c2418aa428a0f682564443f4567a6
 Requires: lpSolve
 
 Package: scales
 Source: CRAN
-Version: 0.2.4
-Hash: b8b1af97bd07818605223060386b00dd
-Requires: RColorBrewer, dichromat, labeling, munsell, plyr
+Version: 0.3.0
+Hash: 5ef5baa78154b44b1748d8c78bfce4b2
+Requires: RColorBrewer, Rcpp, dichromat, labeling, munsell, plyr
 
 Package: stringi
 Source: CRAN
