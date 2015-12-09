@@ -7,6 +7,8 @@ PROBE.SIZE.NEGATIVE = 75
 PROBE.SIZE.POSITIVE = 75
 PROBE.SIZE          = PROBE.SIZE.NEGATIVE + PROBE.SIZE.POSITIVE
 
+KNN.MAX.CASE.BASE.SIZE   = Inf
+
 OBSCURE.MAX         = 0.5
 OBSCURE.PERCENTAGES = c(seq(0.0, OBSCURE.MAX, 0.05))
 OBSUCRE.REPEAT      = 1000
@@ -18,7 +20,7 @@ DATASETS.DIR           = 'datasets'
 DATABASE.FILE          = 'db-2015-04-30.csv'
 TRAINING.FILE          = 'training.csv'
 TEST.FILE              = 'test.csv'
-EVALUATION.OUTPUT.FILE = 'evaluation-output.RData'
+EVALUATION.OUTPUT.FILE = 'knn-eval-output.RData'
 
 DATABASE.LOCATION          = paste(DATASETS.DIR, DATABASE.FILE, sep='/')
 TRAINING.LOCATION          = paste(DATASETS.DIR, TRAINING.FILE, sep='/')

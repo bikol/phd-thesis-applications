@@ -38,7 +38,7 @@ if (THREADS > 1)
     clusterExport(CL, c("SEED", "OBSUCRE.REPEAT"))
     clusterCall(CL, function(){ set.seed(SEED) })
 
-    clusterExport(cl=CL, list('invPerm', 'PROBE.SIZE', 'SIMILARITIES', 'SIMILARITIES.NAME', 'AGGREGATORS', 'AGGREGATORS.NAME', 'METHODS',
+    clusterExport(cl=CL, list('KNN.MAX.CASE.BASE.SIZE', 'invPerm', 'PROBE.SIZE', 'SIMILARITIES', 'SIMILARITIES.NAME', 'AGGREGATORS', 'AGGREGATORS.NAME', 'METHODS',
                               'METHODS.NAME', 'ds.training', 'ds.test',
                               'diagnosisToOutcome', 'CUTOFF.CRISP', 'W.AUC',
                               'COMMON.PART', 'INTERVAL.INTERSECTION'))
@@ -48,17 +48,6 @@ if (THREADS > 1)
     usedLapply = lapply
 }
 
-e1 <- new.env()
-load("datasets/aggr-evaluation-output.RData", e1)
-
-# ---- training-statistics-models-original ----
-training.stats.models.orig = get('training.stats.models.orig', e1)
-
-# ---- training-statistics-models-uncertaintified ----
-training.stats.models.uncer = get('training.stats.models.uncer', e1)
-
-# ---- training-statistics-aggregators ----
-training.stats.aggrs = get('training.stats.aggrs', e1)
 
 # ---- training-statistics-similarities ----
 
@@ -69,41 +58,45 @@ outcomes.sims = usedLapply(1:length(SIMILARITIES), function(i){
     sim = SIMILARITIES[[i]]
 
     diags = c()
-    # build training and test set for 10 fold CV
+
+    # split training data set into separate probes
     for(i in 1:(nrow(ds.training)/PROBE.SIZE)) {
-        print(paste("repeat", i))
-        # zakres
-        # ((i-1)*PROBE.SIZE+1):(i*PROBE.SIZE)
+        printDebug(paste("Data repeat(probe):", i))
 
-
+        # select only cases from this probe
         all.data = ds.training[((i-1)*PROBE.SIZE+1):(i*PROBE.SIZE), ]
-
+        # randomise input to obrain different fold for each probe
         shuffle = sample(nrow(all.data))
         all.data = all.data[shuffle, ]
 
-        # make folds
         fold.size = PROBE.SIZE/10
 
         d = sapply(1:10, function(fold) {
-            print(paste('fold',fold))
+            # build training and test set for 10 fold CV
             mask = rep(F, PROBE.SIZE)
             mask[((fold-1)*fold.size+1):(fold*fold.size)] = T
             test.data = all.data[mask,]
             train.data = all.data[!mask,]
 
+            # convert training set into proper format accepted by classifier
             ts = apply(train.data,1 , function(x){
                 return(list(m=matrix(as.numeric(x[5:(5+length(METHODS)*2-1)]), nrow=2), type=x[4]))
                 })
-            classifier = sim(ts[sample(length(ts), 10)])
+
+            if(length(ts) > KNN.MAX.CASE.BASE.SIZE) {
+                classifier = sim(ts[sample(length(ts), min(length(ts), KNN.MAX.CASE.BASE.SIZE))])
+            } else {
+                classifier = sim(ts)
+            }
 
             # selection of appropriate columns
             tmp = apply(test.data[, 5:(5+length(METHODS)*2-1)], 1, function(row) {
-                # matrix in format required by aggregation method is created and passed into aggr
+                # matrix in format required by aggregation method is created and passed into classifier
                 return(classifier(matrix(row, nrow=2)))
             })
             return(tmp)
         })
-        # to undo the shuffling
+        # undo the shuffling to enable comparison with expected results
         d = c(d)[invPerm(shuffle)]
         diags[((i-1)*PROBE.SIZE+1):(i*PROBE.SIZE)] = d
     }
@@ -136,10 +129,7 @@ training.stats.sims = suppressWarnings( # suppress different factor levels warni
 
 printDebug("training statistics bind")
 
-training.stats.all = bind_rows(training.stats.models.orig,
-                               training.stats.models.uncer,
-                               training.stats.aggrs,
-                               training.stats.sims)
+training.stats.all = training.stats.sims
 
 # ---- training-statistics-performance-calculation ----
 
@@ -160,14 +150,11 @@ training.stats.all.perf = left_join(training.stats.all.perf,
 
 printDebug("select optimized similarities")
 
-# skip optimisation
+# currently skip optimisation
 # optimizedSimilaritiesNames = getOptimizedAggregators(training.stats.all.perf, PERFORMANCE.MEASURE)
 optimizedSimilaritiesNames = SIMILARITIES.NAME
 
-training.stats.all.perf = subset(training.stats.all.perf,
-                                 Method %in% c(optimizedSimilaritiesNames,
-                                             unique(as.character(training.stats.models.orig$Method)),
-                                             unique(as.character(training.stats.models.uncer$Method))))
+training.stats.all.perf = subset(training.stats.all.perf, Method %in% c(optimizedSimilaritiesNames))
 
 
 ############################
@@ -180,13 +167,6 @@ printDebug("test combine obscuration levels")
 
 ds.test$ObscureLevel = 0
 
-# ---- test-statistics-models-original ----
-test.stats.orig.models = get('test.stats.orig.models', e1)
-
-# ---- test-statistics-models-uncertaintified ----
-test.stats.uncer.models = get('test.stats.uncer.models', e1)
-
-
 # ---- test-statistics-similarities ----
 
 printDebug("test statistics similarities")
@@ -196,65 +176,47 @@ similarities.from.training = unique(subset(training.stats.all.perf, Class=="Simi
 if (THREADS > 1)
     clusterExport(CL, c("similarities.from.training"))
 
-outcomes.sims = usedLapply(1:length(similarities.from.training), function(i){
+outcomes.sims = usedLapply(1:length(similarities.from.training), function(j){
     i = which(similarities.from.training[j] == SIMILARITIES.NAME)
     sim = SIMILARITIES[[i]]
 
     diags = c()
-    # build training and test set for 10 fold CV
+    TEST.SIZE = nrow(ds.test)
+
+    # split training data set into separate probes
     for(i in 1:(nrow(ds.training)/PROBE.SIZE)) {
-        print(paste("repeat", i))
-        # zakres
-        # ((i-1)*PROBE.SIZE+1):(i*PROBE.SIZE)
+        printDebug(paste("Data repeat(probe):", i))
 
-
+        # select only cases from this probe
         train.data = ds.training[((i-1)*PROBE.SIZE+1):(i*PROBE.SIZE), ]
 
-#         shuffle = sample(nrow(all.data))
-#         train.data = train.data[shuffle, ]
-
-        ts = apply(ds.test,1 , function(x){
+        # convert training set into proper format accepted by classifier
+        ts = apply(train.data, 1, function(x){
             return(list(m=matrix(as.numeric(x[5:(5+length(METHODS)*2-1)]), nrow=2), type=x[4]))
         })
-        classifier = sim(ts)
-        d = apply(test.data[, 5:(5+length(METHODS)*2-1)], 1, function(row) {
+
+        if(length(ts) > KNN.MAX.CASE.BASE.SIZE) {
+            classifier = sim(ts[sample(length(ts), min(length(ts), KNN.MAX.CASE.BASE.SIZE))])
+        } else {
+            classifier = sim(ts)
+        }
+
+        d = apply(ds.test[, 5:(5+length(METHODS)*2-1)], 1, function(row) {
             # matrix in format required by aggregation method is created and passed into aggr
             return(classifier(matrix(row, nrow=2)))
         })
-        browser()
-        diags[((i-1)*PROBE.SIZE+1):(i*PROBE.SIZE)] = d
-        # make folds
-        fold.size = PROBE.SIZE/10
-
-#         d = sapply(1:10, function(fold) {
-#             print(paste('fold',fold))
-#             mask = rep(F, PROBE.SIZE)
-#             mask[((fold-1)*fold.size+1):(fold*fold.size)] = T
-#             test.data = all.data[mask,] # ds.test
-#             train.data = all.data[!mask,] # ds.train
-#
-#             ts = apply(ds.test,1 , function(x){
-#                 return(list(m=matrix(as.numeric(x[5:(5+length(METHODS)*2-1)]), nrow=2), type=x[4]))
-#             })
-#             classifier = sim(ts)
-#
-#             # selection of appropriate columns
-#             tmp = apply(test.data[, 5:(5+length(METHODS)*2-1)], 1, function(row) {
-#                 # matrix in format required by aggregation method is created and passed into aggr
-#                 return(classifier(matrix(row, nrow=2)))
-#             })
-#             return(tmp)
-#         })
-#         # to undo the shuffling
-#         d = c(d)[invPerm(shuffle)]
-#         diags[((i-1)*PROBE.SIZE+1):(i*PROBE.SIZE)] = d
+        diags[((i-1)*TEST.SIZE+1):(i*TEST.SIZE)] = d
     }
-    converted = apply(cbind(diags, ds.training$MalignancyCharacter),
+    converted = apply(cbind(diags, ds.test$MalignancyCharacter),
                       1, diagnosisToOutcome)
     return(converted)
 })
 
-outcomes.sims        = data.frame(ds.test[, 1:3], outcomes.sims)
+printDebug("finished classification")
+
+obscureLevels = unique(ds.training[, 2:3])
+obscureLevels = obscureLevels[rep(1:nrow(obscureLevels),each=nrow(ds.test)), ]
+outcomes.sims        = data.frame(ds.test[, 1:1], obscureLevels, outcomes.sims)
 names(outcomes.sims) = c(names(ds.test)[1:3], similarities.from.training)
 
 test.stats.sims = melt(calculate.stats(
@@ -272,42 +234,51 @@ test.stats.sims = suppressWarnings( # suppress different factor levels warning
               by="Method")
 )
 
-# ---- test-statistics-aggregators ----
-test.stats.aggrs = get('test.stats.aggrs', e1)
-
-
-
 # ---- test-statistics-bind ----
 
 printDebug("test statistics bind")
 
-test.stats.all = bind_rows(test.stats.orig.models,
-                           test.stats.uncer.models,
-                           test.stats.aggrs,
-                           test.stats.sims)
+test.stats.all = test.stats.sims
+
+# ---- training-statistics-performance-calculation ----
+
+printDebug("training statistics performance calculation")
+
+test.stats.all.perf = aggregate(test.stats.all$Value,
+                                list(Method=test.stats.all$Method,
+                                     Measure=test.stats.all$Measure),
+                                mean) %>%
+                            rename(Value=x)
+
+test.stats.all.perf = left_join(test.stats.all.perf,
+                                    distinct(select(test.stats.all,
+                                                    Method, Class, Subclass, Subsubclass)),
+                                    by="Method")
 
 # ---- test-statistics-performance-bind-with-training ----
 
-# printDebug("test statistics performance bind with training")
-#
-# binded.stats.all.perf = left_join(select(training.stats.all.perf, Method, Measure, Value),
-#                                   test.stats.all,
-#                                   by=c("Method", "Measure")) %>%
-#                         rename(Value.training=Value.x, Value.test=Value.y)
+printDebug("test statistics performance bind with training")
+
+binded.stats.all.perf = left_join(select(training.stats.all.perf, Method, Measure, Value),
+                                  test.stats.all,
+                                  by=c("Method", "Measure")) %>%
+                        rename(Value.training=Value.x, Value.test=Value.y)
 
 # ---- convert-statistics-performance-to-wide-format ----
 
-# printDebug("convert statistics performance to wide format")
-#
-# training.stats.all.perf.wide = dcast(training.stats.all.perf,
-#                                      Method + Class + Subclass + Subsubclass ~ Measure,
-#                                      value.var="Value")
-#
-# test.stats.all.wide          = dcast(test.stats.all,
-#                                      Method + Class + Subclass + Subsubclass ~ Measure,
-#                                      value.var="Value")
+printDebug("convert statistics performance to wide format")
+
+training.stats.all.perf.wide = dcast(training.stats.all.perf,
+                                     Method + Class + Subclass + Subsubclass ~ Measure,
+                                     value.var="Value")
+
+test.stats.all.wide          = dcast(test.stats.all.perf,
+                                     Method + Class + Subclass + Subsubclass ~ Measure,
+                                     value.var="Value")
 
 # # ---- aggregators-selection-and-statistical-tests ----
+#
+#   to be moved into result visualisation script
 #
 # printDebug("aggregators selection and statistical tests")
 #
@@ -355,4 +326,4 @@ if (THREADS > 1)
 
 printDebug("save evaluation")
 
-# save.image(EVALUATION.OUTPUT.LOCATION)
+save.image(EVALUATION.OUTPUT.LOCATION)

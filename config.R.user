@@ -1,3 +1,5 @@
 THREADS             = 4
 DEBUG               = TRUE
-OBSUCRE.REPEAT      = 3
+OBSUCRE.REPEAT      = 1
+
+KNN.MAX.CASE.BASE.SIZE   = 25
