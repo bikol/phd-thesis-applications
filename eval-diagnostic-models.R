@@ -32,10 +32,10 @@ ds.test     = read.csv(TEST.LOCATION,     colClasses=colClass)
 printDebug("protype build strategy")
 build.prototypes = function(ts){
     return(list(
-        list(m=matrix(rep(c(0, 0.5), times=length(METHODS)), nrow=2), type='0'),
-        list(m=matrix(rep(c(0.5, 1), times=length(METHODS)), nrow=2), type='1'),
-        list(m=matrix(rep(c(0.4, 0.6), times=length(METHODS)), nrow=2), type='0'),
-        list(m=matrix(rep(c(0.4, 0.6), times=length(METHODS)), nrow=2), type='1')
+        list(m=matrix(rep(c(0, 0.5), times=length(METHODS)), nrow=2), type=0),
+        list(m=matrix(rep(c(0.5, 1), times=length(METHODS)), nrow=2), type=1),
+        list(m=matrix(rep(c(0.4, 0.6), times=length(METHODS)), nrow=2), type=0),
+        list(m=matrix(rep(c(0.4, 0.6), times=length(METHODS)), nrow=2), type=1)
     ))
 }
 
@@ -50,7 +50,8 @@ if (THREADS > 1)
     clusterExport(CL, c("SEED", "OBSUCRE.REPEAT"))
     clusterCall(CL, function(){ set.seed(SEED) })
 
-    clusterExport(cl=CL, list('KNN.MAX.CASE.BASE.SIZE', 'invPerm', 'PROBE.SIZE',
+    clusterExport(cl=CL, list('DescIterBinSearch', 'AscIterBinSearch',
+                              'KNN.MAX.CASE.BASE.SIZE', 'invPerm', 'PROBE.SIZE',
                               'IVFC', 'IVFC.NAME', 'KNN', 'KNN.NAME', 'build.prototypes',
                               'METHODS', 'METHODS.NAME', 'ds.training', 'ds.test',
                               'diagnosisToOutcome', 'CUTOFF.CRISP', 'W.AUC',
@@ -70,7 +71,7 @@ if(!SKIP.TRAINING) {
         printDebug("training statistics knn")
 
         outcomes.knns = usedLapply(1:length(KNN), function(j){
-            printDebug(paste0("Using ",KNN.NAME[[j]]," classifier"))
+            printDebug(paste0("Using ", KNN.NAME[[j]]," classifier"))
             diags = c()
             # split training data set into separate probes
             for(i in 1:(nrow(ds.training)/PROBE.SIZE)) {
@@ -92,7 +93,7 @@ if(!SKIP.TRAINING) {
                     train.data = all.data[!mask,]
 
                     # convert training set into proper format accepted by classifier
-                    ts = apply(train.data,1 , function(x){
+                    ts = apply(train.data, 1 , function(x){
                         return(list(m=matrix(as.numeric(x[5:(5+length(METHODS)*2-1)]), nrow=2), type=x[4]))
                         })
 
@@ -171,20 +172,21 @@ if(!SKIP.TRAINING) {
                         return(list(m=matrix(as.numeric(x[5:(5+length(METHODS)*2-1)]), nrow=2), type=x[4]))
                     })
 
-                    classifier = KNN[[j]](build.prototypes(ts))
+                    classifier = IVFC[[j]](build.prototypes(ts))
 
                     # selection of appropriate columns
                     tmp = apply(test.data[, 5:(5+length(METHODS)*2-1)], 1, function(row) {
                         # matrix in format required by aggregation method is created and passed into classifier
                         return(classifier(matrix(row, nrow=2)))
                     })
+
                     return(tmp)
                 })
                 # undo the shuffling to enable comparison with expected results
                 d = c(d)[invPerm(shuffle)]
                 diags[((i-1)*PROBE.SIZE+1):(i*PROBE.SIZE)] = d
             }
-            converted = apply(cbind(diags, ds.training$MalignancyCharacter),
+            converted = apply(cbind(sapply(diags, '[[','type'), ds.training$MalignancyCharacter),
                               1, diagnosisToOutcome)
             return(converted)
         })
@@ -368,7 +370,7 @@ if(!SKIP.IVFC) {
             })
             diags[((i-1)*TEST.SIZE+1):(i*TEST.SIZE)] = d
         }
-        converted = apply(cbind(diags, ds.test$MalignancyCharacter),
+        converted = apply(cbind(sapply(diags, '[[','type'), ds.test$MalignancyCharacter),
                           1, diagnosisToOutcome)
         return(converted)
     })

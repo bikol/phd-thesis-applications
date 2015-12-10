@@ -1,3 +1,5 @@
+source('aggregators-helpers.R')
+
 # constrOptim funciton for stats package, modified to avoid feasible region problem
 # caused by numerical inaccuracy of calculations
 myConstrOptim = function(theta, f, grad, ui, ci, mu = 1e-04, control = list(),
@@ -81,49 +83,43 @@ myConstrOptim = function(theta, f, grad, ui, ci, mu = 1e-04, control = list(),
     a
 }
 
+AscIterBinSearch <- function(A, value) {
+    low = 1
+    high = length(A)
+    if ( A[[high]] < value )
+        return (high+1)
+
+    while ( low <= high ) {
+        mid <- floor((low + high)/2)
+        if ( A[mid] > value )
+            high <- mid - 1
+        else if ( A[mid] < value )
+            low <- mid + 1
+        else
+            return(mid)
+    }
+    return(max(low, mid, high))
+}
+DescIterBinSearch <- function(A, value) {
+    low = 1
+    high = length(A)
+    if ( A[[high]] > value )
+        return (high+1)
+
+    while ( low <= high ) {
+        mid <- floor((low + high)/2)
+        if ( A[mid] < value )
+            high <- mid - 1
+        else if ( A[mid] > value )
+            low <- mid + 1
+        else
+            return(mid)
+    }
+    return(max(low, mid, high))
+}
+
 RELATIVE.CARDINALITY = function(la, ua, lb, ub, sim.params, E = 1e-6){
     MAX.I = 1000
-    AscIterBinSearch <- function(A, value) {
-        low = 1
-        high = length(A)
-#         if(any(is.na(A))){
-#             browser()
-#         }
-        if ( A[[high]] < value )
-            return (high+1)
-
-        while ( low <= high ) {
-            mid <- floor((low + high)/2)
-            if ( A[mid] > value )
-                high <- mid - 1
-            else if ( A[mid] < value )
-                low <- mid + 1
-            else
-                return(mid)
-        }
-        return(max(low, mid, high))
-    }
-    DescIterBinSearch <- function(A, value) {
-        low = 1
-        high = length(A)
-        if ( A[[high]] > value )
-            return (high+1)
-
-#         if(any(is.na(A))){
-#             browser()
-#         }
-        while ( low <= high ) {
-            mid <- floor((low + high)/2)
-            if ( A[mid] < value )
-                high <- mid - 1
-            else if ( A[mid] > value )
-                low <- mid + 1
-            else
-                return(mid)
-        }
-        return(max(low, mid, high))
-    }
-
     # Init
     n = length(la);
 
@@ -285,20 +281,23 @@ RELATIVE.CARDINALITY = function(la, ua, lb, ub, sim.params, E = 1e-6){
 
     # Validate the result
     l.x = l.x[order(l.order)]
-    if( any(l.x - lb < -1e-6) | any(l.x - ub > 1e-6)){
-        print("Incorrect lower")
-        print(lb)
-        print(ub)
-        print(l.x)
-        warning("Incorrect resulting l.x")
-    }
     u.x = u.x[order(u.order)]
-    if( any(u.x - lb < -1e-6) | any(u.x -ub > 1e-6)){
-        print("Incorrect upper")
-        print(lb)
-        print(ub)
-        print(u.x)
-        warning("Incorrect resulting u.x")
+    if(DEBUG){
+        if( any(l.x - lb < -1e-6) | any(l.x - ub > 1e-6)){
+            print("Incorrect lower")
+            print(lb)
+            print(ub)
+            print(l.x)
+            warning("Incorrect resulting l.x")
+        }
+
+        if( any(u.x - lb < -1e-6) | any(u.x -ub > 1e-6)){
+            print("Incorrect upper")
+            print(lb)
+            print(ub)
+            print(u.x)
+            warning("Incorrect resulting u.x")
+        }
     }
 
     # Step 19
@@ -307,7 +306,6 @@ RELATIVE.CARDINALITY = function(la, ua, lb, ub, sim.params, E = 1e-6){
 
 # numeric optimisation based RC implementation
 RELATIVE.CARDINALITY.OPT = function(la, ua, lb, ub, sim.params, E = 1e-6){
-    #   tnorm, f, lu, uu, lp, up
     n=length(la)
     ui = matrix(c(sapply(1:n, function(x){c(diag(n)[,x], -diag(n)[,x])}, simplify = T)), nrow=2*n, ncol=n, byrow=T)
     ci = c(rbind(lb, -ub))
@@ -349,16 +347,13 @@ GEN.SIM.JACCARD = function(sim.params, optimisation = F){
         iAiB = list(
             lower = apply(cbind(iA$lower, iB$lower), 1, sim.params$tnorm),
             upper = apply(cbind(iA$upper, iB$upper), 1, sim.params$tnorm))
-#         print("iAiB")
-#         print(iAiB)
+        # build t-conorm dual to given t-norm using default negation
         tconorm  = function(x){
             return(1-sim.params$tnorm(c(1-x[[1]],1-x[[2]])))
         }
         iAviB = list(
             lower = apply(cbind(iA$lower, iB$lower), 1, tconorm),
             upper = apply(cbind(iA$upper, iB$upper), 1, tconorm))
-#         print("iAviB")
-#         print(iAviB)
 
         result = RC(iAiB$lower, iAiB$upper, iAviB$lower, iAviB$upper, sim.params)
         return(result)
@@ -383,51 +378,32 @@ GEN.SIM.PARAMS.OPTIMISATION = function(tnorm.p, f.p){
         f = f.p,
         lp = function(x){
             la = x[[1]]; ua = x[[2]]; lb = x[[3]]; ub = x[[4]]
-
             fn = function(b){
                 return(min(1, (f.p(tnorm.p(la, b))-f.p(tnorm.p(la, lb)))/(f.p(b)-f.p(lb))))
             }
-
             if(abs(ub - lb) <1e-4){
                 return(compLimit(fn, mean(lb, ub)))
             }else{
                 theta = (lb + ub)/2
                 res = optim(theta, fn, method="Brent", lower = lb, upper = ub)
-#                 if(is.nan(res$value)){
-#                     browser()
-#                 }
-#                 if(is.na(res$value)){
-#                     browser()
-#                 }
                 return(res$value)
             }
         },
         up = function(x){
             la = x[[1]]; ua = x[[2]]; lb = x[[3]]; ub = x[[4]]
-
             fn = function(b){
                 return(min(1, (f.p(tnorm.p(ua, b))-f.p(tnorm.p(ua, lb)))/(f.p(b)-f.p(lb))))
             }
-
             if(abs(ub - lb) <1e-4){
                 return(compLimit(fn, mean(lb, ub)))
             }else{
                 theta = (lb + ub)/2
                 res = optim(theta, fn, method="Brent", lower = lb, upper = ub, control = list(fnscale = -1))
-#                 if(is.nan(res$value)){
-#                     browser()
-#                 }
-#                 if(is.na(res$value)){
-#                     browser()
-#                 }
                 return(res$value)
             }
         },
         lu = function(x, m, M){
-#             print("lu")
             la = x[[1]]; ua = x[[2]]; lb = x[[3]]; ub = x[[4]]
-#             ui = matrix(c(1, -1), nrow=2, ncol=1, byrow=T)
-#             ci = c(lb, -ub)
             if(lb == ub){
                 return(lb)
             }else{
@@ -435,17 +411,11 @@ GEN.SIM.PARAMS.OPTIMISATION = function(tnorm.p, f.p){
                 res = optim(theta, function(b){
                     return((m + f.p(tnorm.p(la, b)))/(M + f.p(b)))
                 }, method="Brent", lower = lb, upper = ub)
-    #             res = myConstrOptim(theta, function(b){
-    #                 return((m + f.p(tnorm.p(la, b)))/(M + f.p(b)))
-    #             }, NULL, ui, ci, outer.eps = 1e-6, method="Brent")
                 return(res$par)
             }
         },
         uu = function(x, m, M){
-#             print("uu")
             la = x[[1]]; ua = x[[2]]; lb = x[[3]]; ub = x[[4]]
-#             ui = matrix(c(1, -1), nrow=2, ncol=1, byrow=T)
-#             ci = c(lb, -ub)
             if(lb == ub){
                 return(lb)
             }else{
@@ -453,9 +423,6 @@ GEN.SIM.PARAMS.OPTIMISATION = function(tnorm.p, f.p){
                 res = optim(theta, function(b){
                     return((m + f.p(tnorm.p(ua, b)))/(M + f.p(b)))
                 }, method="Brent", lower = lb, upper = ub, control = list(fnscale = -1))
-    #             res = myConstrOptim(theta, function(b){
-    #                 return((m + f.p(tnorm.p(ua, b)))/(M + f.p(b)))
-    #             }, NULL, ui, ci, outer.eps = 1e-6, method="Brent", control = list(fnscale = -1))
                 return(res$par)
             }
         }))
@@ -661,3 +628,54 @@ SIM.PARAMS = list(SIM.PARAMS.EXACT.MINIMUM.ID,
                SIM.PARAMS.EXACT.SS.2.ID,
                SIM.PARAMS.EXACT.SS.5.ID,
                SIM.PARAMS.EXACT.SS.25.ID)
+
+
+
+NBS.SELECTOR.ORDER.CEN = function(sims, k){
+    cmp = sapply(sims, function(x){ return((x$ly + x$uy) / 2) })
+    return(order(cmp, decreasing = T)[1:k])
+}
+
+VOTE.STRATEGY.MAJRORITY = function(nbsTypes, sims){
+    tab = table(nbsTypes)
+    indexes = which(tab == max(tab))
+    if(length(indexes) == 1){
+        # one class dominates
+        return(as.numeric(names(indexes)[[1]]))
+    } else {
+        # there is no class with majority
+        return(NA)
+    }
+}
+
+AGG.GEN.INTERVAL.MEAN = function(weightLower, weightUpper = NULL, r=1){
+    # Aggregates by computing of weighted mean of input intervals using interval
+    # arithmetic. The *r* agrument defines the exponent in r-mean.
+    force(weightLower);force(weightUpper)
+    return(function(m){
+        wL = weightLower(m)
+        sum.wL = sum(wL);
+        if(is.null(weightUpper)){
+            wU=wL
+            sum.wU=sum.wL
+        }else{
+            wU = weightUpper(m)
+            sum.wU = sum(wU);
+        }
+
+        if(sum.wL==0 || sum.wU==0){
+            return(NA)
+        } else {
+            a=(sum((m[1,]^r) * wL) / sum.wL) ^ (1/r)
+            b=(sum((m[2,]^r) * wU) / sum.wU) ^ (1/r)
+            return(c(a,b))
+        }
+    })
+}
+
+INTERVAL.AGGR.MEAN = AGG.GEN.INTERVAL.MEAN(WEIGHT.1)
+
+
+SUMMARY.MAX.CEN = function(m){
+    return(as.numeric(colnames(m)[[which.max(m[1,]+m[2,])]]))
+}

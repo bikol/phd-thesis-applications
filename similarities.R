@@ -13,9 +13,8 @@ source('similarities-helpers.R')
 # Each classifier returns binary diangosis or *NA*.
 #########################
 
-
-GEN.KNN.SIM = function(sim.params, k, optimisation = F) {
-    force(sim.params);force(k)
+GEN.KNN.SIM = function(sim.params, k, nbs.selector, vote.strategy, optimisation = F) {
+    force(sim.params);force(k);force(nbs.selector);force(vote.strategy);force(optimisation)
     SIM = GEN.SIM.JACCARD(sim.params, optimisation=optimisation)
     return(function(training.set){
         force(training.set)
@@ -24,31 +23,49 @@ GEN.KNN.SIM = function(sim.params, k, optimisation = F) {
             sims = lapply(training.set, function(nb){
                 return(SIM(list(lower=nb$m[1,], upper=nb$m[2,]), list(lower=m[1,], upper=m[2,])))
             })
-
-            # napisać porownywanie przedziałów, narazie dziala i sortuje po pierwszej skladowej listy
-            cmp = sapply(sims, function(x){return((x$ly+x$uy)/2)})
-
-            ord = order(cmp, decreasing = T)
-            sims.sorted =sims[ord]
-
-            #    dodać opcje remisu dla parzystych k i wyniku NA
-            nbsTypes = sapply((training.set[ord])[1:k], "[[", 'type')
-            return(as.numeric(names(which.max(table(nbsTypes)))[[1]]))
-#             return(list(
-#                 type=names(which.max(table(nbsTypes)))[[1]],
-#                 ivfc=NULL# wygenerować jakoś
-#             ))
+            ord = nbs.selector(sims, k)
+            nbsTypes = sapply(training.set[ord], "[[", 'type')
+            return(vote.strategy(nbsTypes, sims[ord]))
         })
     })
 }
 
 
+GEN.IVFC.SIM = function(sim.params, classes, sim.aggr, summary.strategy, optimisation = F) {
+    force(sim.params);force(classes);force(sim.aggr);force(summary.strategy);force(optimisation)
+
+    SIM = GEN.SIM.JACCARD(sim.params, optimisation=optimisation)
+    return(function(prototypes){
+        force(prototypes)
+        return(function(m){
+            force(m)
+            sims = lapply(prototypes, function(nb){
+                return(SIM(list(lower=nb$m[1,], upper=nb$m[2,]), list(lower=m[1,], upper=m[2,])))
+            })
+
+            result = data.frame(ly=sapply(sims, '[[','ly'),
+                                uy=sapply(sims, '[[','uy'),
+                                class=sapply(prototypes, '[[','type'))
+
+            toReturn = sapply(classes, function(cl){
+                toAggregate = filter(result, class == cl)[,1:2]
+                # data is passed in the same format as 'm' matrix
+                return(sim.aggr(t(toAggregate)))
+            })
+            # columns represent classes, two rows lower and upper similarity bound
+            colnames(toReturn) = as.character(classes)
+
+            return(list(type = summary.strategy(toReturn), ivfc = toReturn))
+        })
+    })
+}
+
 KNN.BASIC = list(
         list(function(ts){return(function(x){return(sample(2,1)-1)})}, "dummy.random", 'basic', "Interval"),
         list(function(ts){return(function(x){round((x[1,1]+x[2,1])/2)})}, "dummy.mean", 'basic', "Interval"),
-        list(GEN.KNN.SIM(SIM.PARAMS.EXACT.MINIMUM.ID, 3, optimisation=F), "min.id.ex", 'basic', "Interval"),
-        list(GEN.KNN.SIM(SIM.PARAMS.EXACT.PRODUCT.ID, 3, optimisation=F), "prod.id.ex", 'basic', "Interval"),
-        list(GEN.KNN.SIM(SIM.PARAMS.EXACT.LUK.ID, 3, optimisation=F), "luk.id.ex", 'basic', "Interval")
+        list(GEN.KNN.SIM(SIM.PARAMS.EXACT.MINIMUM.ID, 3, NBS.SELECTOR.ORDER.CEN, VOTE.STRATEGY.MAJRORITY, optimisation=F), "min.id.ex", 'basic', "Interval"),
+        list(GEN.KNN.SIM(SIM.PARAMS.EXACT.PRODUCT.ID, 3, NBS.SELECTOR.ORDER.CEN, VOTE.STRATEGY.MAJRORITY, optimisation=F), "prod.id.ex", 'basic', "Interval"),
+        list(GEN.KNN.SIM(SIM.PARAMS.EXACT.LUK.ID, 3, NBS.SELECTOR.ORDER.CEN, VOTE.STRATEGY.MAJRORITY, optimisation=F), "luk.id.ex", 'basic', "Interval")
     )
 
 
@@ -70,11 +87,11 @@ KNN.BINDED.DESCRIPTION = data.frame(Method=KNN.NAME,
 
 
 IVFC.BASIC = list(
-    list(function(ts){return(function(x){return(sample(2,1)-1)})}, "dummy.random", 'basic', "Interval"),
-    list(function(ts){return(function(x){round((x[1,1]+x[2,1])/2)})}, "dummy.mean", 'basic', "Interval"),
-    list(GEN.KNN.SIM(SIM.PARAMS.EXACT.MINIMUM.ID, 3, optimisation=F), "min.id.ex", 'basic', "Interval"),
-    list(GEN.KNN.SIM(SIM.PARAMS.EXACT.PRODUCT.ID, 3, optimisation=F), "prod.id.ex", 'basic', "Interval"),
-    list(GEN.KNN.SIM(SIM.PARAMS.EXACT.LUK.ID, 3, optimisation=F), "luk.id.ex", 'basic', "Interval")
+    list(function(ts){return(function(x){return(list(type=sample(2,1)-1, ivfc=NA))})}, "iv.dummy.random", 'basic', "Interval"),
+    list(function(ts){return(function(x){return(list(type=round((x[1,1]+x[2,1])/2), ivfc=NA))})}, "iv.dummy.mean", 'basic', "Interval"),
+    list(GEN.IVFC.SIM(SIM.PARAMS.EXACT.MINIMUM.ID, list(0, 1), INTERVAL.AGGR.MEAN, SUMMARY.MAX.CEN, optimisation=F), "iv.min.id.ex", 'basic', "Interval")#,
+#     list(GEN.KNN.SIM(SIM.PARAMS.EXACT.PRODUCT.ID, 3, optimisation=F), "prod.id.ex", 'basic', "Interval"),
+#     list(GEN.KNN.SIM(SIM.PARAMS.EXACT.LUK.ID, 3, optimisation=F), "luk.id.ex", 'basic', "Interval")
 )
 
 IVFC.LIST = c(IVFC.BASIC
