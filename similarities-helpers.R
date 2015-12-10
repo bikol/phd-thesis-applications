@@ -178,7 +178,7 @@ RELATIVE.CARDINALITY = function(la, ua, lb, ub, sim.params, E = 1e-6){
         # Step 8
         repeat {
             if(l.i > MAX.I){
-                warning(paste("Too many iterations, interuped by watchdog l.i=", l.i))
+                # message(paste("Too many iterations, interuped by watchdog l.i=", l.i))
                 break
             }
             l.i = l.i + 1
@@ -235,7 +235,7 @@ RELATIVE.CARDINALITY = function(la, ua, lb, ub, sim.params, E = 1e-6){
         # Step 8
         repeat {
             if(u.i > MAX.I){
-                warning(paste("Too many iterations, interuped by watchdog u.i=", u.i))
+                # message(paste("Too many iterations, interuped by watchdog u.i=", u.i))
                 break
             }
             u.i = u.i + 1

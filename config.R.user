@@ -1,5 +1,9 @@
-THREADS             = 4
+THREADS             = 1
 DEBUG               = TRUE
 OBSUCRE.REPEAT      = 1
 
-KNN.MAX.CASE.BASE.SIZE   = 25
+KNN.MAX.CASE.BASE.SIZE   = 5
+
+SKIP.TRAINING       = F
+SKIP.KNN            = F
+SKIP.IVFC           = F
