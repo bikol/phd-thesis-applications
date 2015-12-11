@@ -23,9 +23,11 @@ GEN.KNN.SIM = function(sim.params, k, nbs.selector, vote.strategy, optimisation 
             sims = lapply(training.set, function(nb){
                 return(SIM(list(lower=nb$m[1,], upper=nb$m[2,]), list(lower=m[1,], upper=m[2,])))
             })
-            ord = nbs.selector(sims, k)
-            nbsTypes = sapply(training.set[ord], "[[", 'type')
-            return(vote.strategy(nbsTypes, sims[ord]))
+            #   usunac jesli nie potrzebne
+            class(sims) = 'SimilarityInterval'
+            sel = nbs.selector(sims, k)
+            nbsTypes = sapply(training.set[sel], "[[", 'type')
+            return(vote.strategy(nbsTypes, sims[sel]))
         })
     })
 }
@@ -60,6 +62,15 @@ GEN.IVFC.SIM = function(sim.params, classes, sim.aggr, summary.strategy, optimis
     })
 }
 
+KNN.JACCARD = apply(cbind(expand.grid(SIM.PARAMS, KS, NBS.SELECTORS, VOTE.STRATEGIES),
+                           expand.grid(SIM.PARAMS.NAME, KS, NBS.SELECTORS.NAME, VOTE.STRATEGIES.NAME)),
+                     1, function(row){
+                         list(GEN.KNN.SIM(row[[1]],row[[2]], row[[3]], row[[4]]),
+                              paste('knn_', row[[6]],'_(', row[[5]], ')_(', row[[7]], ')_', row[[8]], sep=''),
+                              'Jaccard', 'Interval')
+                     })
+
+
 KNN.BASIC = list(
         list(function(ts){return(function(x){return(sample(2,1)-1)})}, "dummy.random", 'basic', "Interval"),
         list(function(ts){return(function(x){round((x[1,1]+x[2,1])/2)})}, "dummy.mean", 'basic', "Interval"),
@@ -69,9 +80,12 @@ KNN.BASIC = list(
     )
 
 
+
+
 # at least 2 classifiers must be defined
 # name and class must not contain '-' and '=' signs (must be valid data.frame column name)
 KNN.LIST = c(KNN.BASIC
+             , KNN.JACCARD
                      )
 
 KNN.LIST = sample(KNN.LIST, length(KNN.LIST))

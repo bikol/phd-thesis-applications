@@ -356,8 +356,22 @@ GEN.SIM.JACCARD = function(sim.params, optimisation = F){
             upper = apply(cbind(iA$upper, iB$upper), 1, tconorm))
 
         result = RC(iAiB$lower, iAiB$upper, iAviB$lower, iAviB$upper, sim.params)
-        return(result)
+        return(structure(result, class='SimilarityInterval'))
     })
+}
+`[.SimilarityInterval` <- function(x, i) {
+    class(x) <- "list"
+    structure(x[i], class='SimilarityInterval')
+}
+`==.SimilarityInterval` = function(a, b) {
+    return(a[[1]]$ly == b[[1]]$ly & a[[1]]$uy == b[[1]]$uy)
+}
+`>.SimilarityInterval` = function(a, b) {
+            return(a[[1]]$ly>b[[1]]$ly)
+        }
+is.na.SimilarityInterval = function(a){
+    str(a)
+    return(is.na(a[[1]]$ly) | is.na(a[[1]]$uy))
 }
 
 GEN.SIM.PARAMS.OPTIMISATION = function(tnorm.p, f.p){
@@ -404,7 +418,7 @@ GEN.SIM.PARAMS.OPTIMISATION = function(tnorm.p, f.p){
         },
         lu = function(x, m, M){
             la = x[[1]]; ua = x[[2]]; lb = x[[3]]; ub = x[[4]]
-            if(lb == ub){
+            if(abs(ub - lb) <1e-4){
                 return(lb)
             }else{
                 theta = (lb + ub)/2
@@ -416,7 +430,7 @@ GEN.SIM.PARAMS.OPTIMISATION = function(tnorm.p, f.p){
         },
         uu = function(x, m, M){
             la = x[[1]]; ua = x[[2]]; lb = x[[3]]; ub = x[[4]]
-            if(lb == ub){
+            if(abs(ub - lb) <1e-4){
                 return(lb)
             }else{
                 theta = (lb + ub)/2
@@ -617,7 +631,7 @@ SIM.PARAMS.EXACT.SS.5.ID = GEN.SIM.PARAMS.EXACT.SS.ID(5)
 SIM.PARAMS.EXACT.SS.25.ID = GEN.SIM.PARAMS.EXACT.SS.ID(25)
 
 SIM.PARAMS = list(SIM.PARAMS.EXACT.MINIMUM.ID,
-               SIM.PARAMS.OPT.SS.m25.ID,
+               # SIM.PARAMS.OPT.SS.m25.ID,
                SIM.PARAMS.OPT.SS.m5.ID,
                SIM.PARAMS.OPT.SS.m2.ID,
                SIM.PARAMS.OPT.SS.m1.ID,
@@ -626,15 +640,67 @@ SIM.PARAMS = list(SIM.PARAMS.EXACT.MINIMUM.ID,
                SIM.PARAMS.OPT.SS.05.ID,
                SIM.PARAMS.EXACT.LUK.ID,
                SIM.PARAMS.EXACT.SS.2.ID,
-               SIM.PARAMS.EXACT.SS.5.ID,
-               SIM.PARAMS.EXACT.SS.25.ID)
+               SIM.PARAMS.EXACT.SS.5.ID
+               # ,SIM.PARAMS.EXACT.SS.25.ID
+               )
+SIM.PARAMS.NAME = c('J_min_id',
+                    # 'J_SS_m25_id',
+                    'J_SS_m5_id', 'J_SS_m2_id', 'J_SS_m1_id', 'J_SS_m05_id',
+                    'J_prod_id', 'J_SS_05_id', 'J_luk_id', 'J_SS_2_id', 'J_SS_5_id'
+                    # , 'J_SS_25_id'
+                    )
 
+KS = c(1,2,3,4,5)
 
-
+# this is Hurwicz with param 0.5
+# L. Hurwicz, A class of criteria for decisionmaking under ignorance, Cowles Comission Paper, 356, 1951
 NBS.SELECTOR.ORDER.CEN = function(sims, k){
     cmp = sapply(sims, function(x){ return((x$ly + x$uy) / 2) })
     return(order(cmp, decreasing = T)[1:k])
 }
+NBS.SELECTOR.ORDER.MIN = function(sims, k){
+    cmp = sapply(sims, function(x){ return(x$ly) })
+    return(order(cmp, decreasing = T)[1:k])
+}
+NBS.SELECTOR.ORDER.MAX = function(sims, k){
+    cmp = sapply(sims, function(x){ return(x$uy) })
+    return(order(cmp, decreasing = T)[1:k])
+}
+NBS.SELECTOR.PARTIAL.DOMINANCE = function(sims, k){
+    adjmatrix = apply(expand.grid(sims, sims), 1, function(pair){
+        a = pair[[1]]
+        b = pair[[2]]
+        if(a$uy<b$ly) {
+            return(1)
+        }else{
+            return(0)
+        }
+    })
+    graph = graph_from_adjacency_matrix(matrix(adjmatrix, nrow=length(sims)), mode = "directed")
+    ord = topo_sort(graph, mode = "in")
+    attributes(ord) = c()
+    return(ord[1:k])
+}
+NBS.SELECTOR.PARTIAL.LATTICE = function(sims, k){
+    adjmatrix = apply(expand.grid(sims, sims), 1, function(pair){
+        a = pair[[1]]
+        b = pair[[2]]
+        if(a$ly<b$ly & a$uy<b$uy) {
+            return(1)
+        }else{
+            return(0)
+        }
+    })
+    graph = graph_from_adjacency_matrix(matrix(adjmatrix, nrow=length(sims)), mode = "directed")
+    ord = topo_sort(graph, mode = "in")
+    attributes(ord) = c()
+    return(ord[1:k])
+}
+
+NBS.SELECTORS = list(NBS.SELECTOR.ORDER.MIN, NBS.SELECTOR.ORDER.CEN,
+                     NBS.SELECTOR.ORDER.MAX, NBS.SELECTOR.PARTIAL.DOMINANCE,
+                     NBS.SELECTOR.PARTIAL.LATTICE)
+NBS.SELECTORS.NAME = c('min', 'cen', 'max', 'dom', 'lat')
 
 VOTE.STRATEGY.MAJRORITY = function(nbsTypes, sims){
     tab = table(nbsTypes)
@@ -647,6 +713,23 @@ VOTE.STRATEGY.MAJRORITY = function(nbsTypes, sims){
         return(NA)
     }
 }
+VOTE.STRATEGY.ALL = function(nbsTypes, sims){
+    if(min(nbsTypes) == max(nbsTypes)){
+        return(nbsTypes[[1]])
+    }else{
+        return(NA)
+    }
+}
+VOTE.STRATEGY.UNC = function(nbsTypes, sims){
+    unc = sapply(sims, function(s){
+        return(s$uy-s$ly)
+    })
+    i = which.min(unc)
+    return(nbsTypes[[i]])
+}
+
+VOTE.STRATEGIES = list(VOTE.STRATEGY.MAJRORITY, VOTE.STRATEGY.ALL, VOTE.STRATEGY.UNC)
+VOTE.STRATEGIES.NAME = c('maj', 'all', 'unc')
 
 AGG.GEN.INTERVAL.MEAN = function(weightLower, weightUpper = NULL, r=1){
     # Aggregates by computing of weighted mean of input intervals using interval
@@ -675,7 +758,12 @@ AGG.GEN.INTERVAL.MEAN = function(weightLower, weightUpper = NULL, r=1){
 
 INTERVAL.AGGR.MEAN = AGG.GEN.INTERVAL.MEAN(WEIGHT.1)
 
+INTERVAL.AGGRS = list(INTERVAL.AGGR.MEAN)
+INTERVAL.AGGRS.NAME = c('iMean')
 
 SUMMARY.MAX.CEN = function(m){
     return(as.numeric(colnames(m)[[which.max(m[1,]+m[2,])]]))
 }
+
+SUMMARIES = list(SUMMARY.MAX.CEN)
+SUMMARIES.NAME = c('max_cen')

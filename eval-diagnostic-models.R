@@ -15,6 +15,7 @@ library(parallel)
 library(reshape2)
 library(dplyr)
 library(Matrix)
+library(igraph)
 
 
 # ---- read-datasets ----
@@ -50,14 +51,13 @@ if (THREADS > 1)
     clusterExport(CL, c("SEED", "OBSUCRE.REPEAT"))
     clusterCall(CL, function(){ set.seed(SEED) })
 
-    clusterExport(cl=CL, list('DescIterBinSearch', 'AscIterBinSearch',
+    clusterExport(cl=CL, list('topo_sort', 'graph_from_adjacency_matrix', 'DescIterBinSearch', 'AscIterBinSearch',
                               'KNN.MAX.CASE.BASE.SIZE', 'invPerm', 'PROBE.SIZE',
                               'IVFC', 'IVFC.NAME', 'KNN', 'KNN.NAME', 'build.prototypes',
                               'METHODS', 'METHODS.NAME', 'ds.training', 'ds.test',
                               'diagnosisToOutcome', 'CUTOFF.CRISP', 'W.AUC',
-                              'COMMON.PART', 'INTERVAL.INTERSECTION'))
-
-    usedLapply = function(...){ parLapply(CL, ...) }
+                              'COMMON.PART', 'INTERVAL.INTERSECTION', 'printDebug', 'DEBUG'))
+    usedLapply = function(...){ parLapplyLB(CL, ...) }
 } else {
     usedLapply = lapply
 }
@@ -286,8 +286,8 @@ if(!SKIP.KNN) {
             train.data = ds.training[((i-1)*PROBE.SIZE+1):(i*PROBE.SIZE), ]
 
             # convert training set into proper format accepted by classifier
-            ts = apply(train.data, 1, function(x){
-                return(list(m=matrix(as.numeric(x[5:(5+length(METHODS)*2-1)]), nrow=2), type=x[4]))
+            ts = apply(train.data[,4:(5+length(METHODS)*2-1)], 1, function(x){
+                return(list(m=matrix(as.numeric(x[2:(2+length(METHODS)*2-1)]), nrow=2), type=x[1]))
             })
 
             if(length(ts) > KNN.MAX.CASE.BASE.SIZE) {
