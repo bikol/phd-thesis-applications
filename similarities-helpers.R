@@ -1,5 +1,3 @@
-source('aggregators-helpers.R')
-
 # constrOptim funciton for stats package, modified to avoid feasible region problem
 # caused by numerical inaccuracy of calculations
 myConstrOptim = function(theta, f, grad, ui, ci, mu = 1e-04, control = list(),
@@ -356,22 +354,8 @@ GEN.SIM.JACCARD = function(sim.params, optimisation = F){
             upper = apply(cbind(iA$upper, iB$upper), 1, tconorm))
 
         result = RC(iAiB$lower, iAiB$upper, iAviB$lower, iAviB$upper, sim.params)
-        return(structure(result, class='SimilarityInterval'))
+        return(result)
     })
-}
-`[.SimilarityInterval` <- function(x, i) {
-    class(x) <- "list"
-    structure(x[i], class='SimilarityInterval')
-}
-`==.SimilarityInterval` = function(a, b) {
-    return(a[[1]]$ly == b[[1]]$ly & a[[1]]$uy == b[[1]]$uy)
-}
-`>.SimilarityInterval` = function(a, b) {
-            return(a[[1]]$ly>b[[1]]$ly)
-        }
-is.na.SimilarityInterval = function(a){
-    str(a)
-    return(is.na(a[[1]]$ly) | is.na(a[[1]]$uy))
 }
 
 GEN.SIM.PARAMS.OPTIMISATION = function(tnorm.p, f.p){
@@ -731,11 +715,31 @@ VOTE.STRATEGY.UNC = function(nbsTypes, sims){
 VOTE.STRATEGIES = list(VOTE.STRATEGY.MAJRORITY, VOTE.STRATEGY.ALL, VOTE.STRATEGY.UNC)
 VOTE.STRATEGIES.NAME = c('maj', 'all', 'unc')
 
-AGG.GEN.INTERVAL.MEAN = function(weightLower, weightUpper = NULL, r=1){
+# Weights
+# Selector is responsible for computing weight for each interval.
+# Agrument *m* has the same structure as this passed to aggretaion function.
+# Returns vector of length *ncol(m)* containing weights.
+# Selectors are used in e.g. weighted mean aggregatoin functions
+#########################
+WEIGHT.1 = function(m){
+    # constant weights
+    return(rep(1,times=ncol(m)))
+}
+WEIGHT.WIDTH = function(m){
+    # intervals weighted by their width
+    return(apply(m,2,function(interval){
+        return(1-(interval[[2]]-interval[[1]]))
+    }))
+}
+
+GEN.AGG.INTERVAL.MEAN = function(weightLower, weightUpper = NULL, r=1){
     # Aggregates by computing of weighted mean of input intervals using interval
     # arithmetic. The *r* agrument defines the exponent in r-mean.
     force(weightLower);force(weightUpper)
-    return(function(m){
+    return(function(sims){
+        #build m
+        m = matrix(c(sapply(sims, '[[','ly'), sapply(sims, '[[','uy')), nrow=2, byrow=T)
+
         wL = weightLower(m)
         sum.wL = sum(wL);
         if(is.null(weightUpper)){
@@ -756,14 +760,90 @@ AGG.GEN.INTERVAL.MEAN = function(weightLower, weightUpper = NULL, r=1){
     })
 }
 
-INTERVAL.AGGR.MEAN = AGG.GEN.INTERVAL.MEAN(WEIGHT.1)
-
-INTERVAL.AGGRS = list(INTERVAL.AGGR.MEAN)
-INTERVAL.AGGRS.NAME = c('iMean')
-
-SUMMARY.MAX.CEN = function(m){
-    return(as.numeric(colnames(m)[[which.max(m[1,]+m[2,])]]))
+GEN.AGG.INTERVAL.ORDER = function(nbs.selector) {
+    force(nbs.selector)
+    return(function(sims){
+        selected = sims[[nbs.selector(sims, 1)]]
+        return(c(selected$ly, selected$uy))
+    })
 }
 
-SUMMARIES = list(SUMMARY.MAX.CEN)
-SUMMARIES.NAME = c('max_cen')
+INTERVAL.AGGR.MEAN.1 = GEN.AGG.INTERVAL.MEAN(WEIGHT.1)
+
+INTERVAL.AGGRS = list(INTERVAL.AGGR.MEAN.1,
+                      GEN.AGG.INTERVAL.MEAN(WEIGHT.WIDTH),
+                      GEN.AGG.INTERVAL.ORDER(NBS.SELECTOR.ORDER.MIN),
+                      GEN.AGG.INTERVAL.ORDER(NBS.SELECTOR.ORDER.CEN),
+                      GEN.AGG.INTERVAL.ORDER(NBS.SELECTOR.ORDER.MAX),
+                      GEN.AGG.INTERVAL.ORDER(NBS.SELECTOR.PARTIAL.DOMINANCE),
+                      GEN.AGG.INTERVAL.ORDER(NBS.SELECTOR.PARTIAL.LATTICE))
+INTERVAL.AGGRS.NAME = c('mean_1','mean_w', 'min', 'cen', 'max', 'dom', 'lat')
+
+GEN.SUMMARY.ORDER = function(nbs.selector) {
+    force(nbs.selector)
+    return(function(m){
+
+    })
+}
+
+SUMMARY.ORDER.CEN = function(m){
+    return(as.numeric(colnames(m)[[which.max(m[1,]+m[2,])]]))
+}
+SUMMARY.ORDER.MIN = function(m){
+    return(as.numeric(colnames(m)[[which.max(m[1,])]]))
+}
+SUMMARY.ORDER.MAX = function(m){
+    return(as.numeric(colnames(m)[[which.max(m[2,])]]))
+}
+SUMMARY.PARTIAL.DOMINANCE = function(m){
+    adjmatrix = apply(expand.grid(1:ncol(m), 1:ncol(m)), 1, function(pair){
+        a = list(ly = m[1, pair[[1]]], uy = m[2, pair[[1]]])
+        b = list(ly = m[1, pair[[2]]], uy = m[2, pair[[2]]])
+        if(a$uy<b$ly) {
+            return(1)
+        }else{
+            return(0)
+        }
+    })
+    adjmatrix = matrix(adjmatrix, nrow=ncol(m))
+    graph = graph_from_adjacency_matrix(adjmatrix, mode = "directed")
+    ord = topo_sort(graph, mode = "in")
+    attributes(ord) = c()
+
+    # check whether first is better then second
+    if(adjmatrix[ord[[1]], ord[[2]] ] > 0){
+        return(as.numeric(colnames(m)[[ ord[[1]] ]]))
+    }else{
+        return(NA)
+    }
+}
+
+SUMMARY.PARTIAL.LATTICE = function(m){
+    adjmatrix = apply(expand.grid(1:ncol(m), 1:ncol(m)), 1, function(pair){
+        a = list(ly = m[1, pair[[1]]], uy = m[2, pair[[1]]])
+        b = list(ly = m[1, pair[[2]]], uy = m[2, pair[[2]]])
+        if(a$ly<b$ly & a$uy<b$uy) {
+            return(1)
+        }else{
+            return(0)
+        }
+    })
+    adjmatrix = matrix(adjmatrix, nrow=ncol(m))
+    graph = graph_from_adjacency_matrix(adjmatrix, mode = "directed")
+    ord = topo_sort(graph, mode = "in")
+    attributes(ord) = c()
+
+    # check whether first is better then second
+    if(adjmatrix[ord[[1]], ord[[2]] ] > 0){
+        return(as.numeric(colnames(m)[[ ord[[1]] ]]))
+    }else{
+        return(NA)
+    }
+}
+
+SUMMARIES = list(SUMMARY.ORDER.MIN,
+                 SUMMARY.ORDER.CEN,
+                 SUMMARY.ORDER.MAX,
+                 SUMMARY.PARTIAL.DOMINANCE,
+                 SUMMARY.PARTIAL.LATTICE)
+SUMMARIES.NAME = c('min', 'cen', 'max', 'dom', 'lat')

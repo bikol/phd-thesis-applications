@@ -23,8 +23,6 @@ GEN.KNN.SIM = function(sim.params, k, nbs.selector, vote.strategy, optimisation 
             sims = lapply(training.set, function(nb){
                 return(SIM(list(lower=nb$m[1,], upper=nb$m[2,]), list(lower=m[1,], upper=m[2,])))
             })
-            #   usunac jesli nie potrzebne
-            class(sims) = 'SimilarityInterval'
             sel = nbs.selector(sims, k)
             nbsTypes = sapply(training.set[sel], "[[", 'type')
             return(vote.strategy(nbsTypes, sims[sel]))
@@ -45,18 +43,13 @@ GEN.IVFC.SIM = function(sim.params, classes, sim.aggr, summary.strategy, optimis
                 return(SIM(list(lower=nb$m[1,], upper=nb$m[2,]), list(lower=m[1,], upper=m[2,])))
             })
 
-            result = data.frame(ly=sapply(sims, '[[','ly'),
-                                uy=sapply(sims, '[[','uy'),
-                                class=sapply(prototypes, '[[','type'))
+            cls = sapply(prototypes, '[[','type')
 
             toReturn = sapply(classes, function(cl){
-                toAggregate = filter(result, class == cl)[,1:2]
-                # data is passed in the same format as 'm' matrix
-                return(sim.aggr(t(toAggregate)))
+                return(sim.aggr(sims[which(cls == cl)]))
             })
             # columns represent classes, two rows lower and upper similarity bound
             colnames(toReturn) = as.character(classes)
-
             return(list(type = summary.strategy(toReturn), ivfc = toReturn))
         })
     })
@@ -100,15 +93,24 @@ KNN.BINDED.DESCRIPTION = data.frame(Method=KNN.NAME,
                                             Subsubclass=KNN.SUBCLASS)
 
 
+IVFC.JACCARD = apply(cbind(expand.grid(SIM.PARAMS, INTERVAL.AGGRS, SUMMARIES),
+                          expand.grid(SIM.PARAMS.NAME, INTERVAL.AGGRS.NAME, SUMMARIES.NAME)),
+                    1, function(row){
+                        list(GEN.IVFC.SIM(row[[1]], list(0, 1), row[[2]], row[[3]]),
+                             paste('ivfc_(', row[[4]],')_', row[[5]], '_', row[[6]], sep=''),
+                             'Jaccard', 'Interval')
+                    })
+
 IVFC.BASIC = list(
     list(function(ts){return(function(x){return(list(type=sample(2,1)-1, ivfc=NA))})}, "iv.dummy.random", 'basic', "Interval"),
     list(function(ts){return(function(x){return(list(type=round((x[1,1]+x[2,1])/2), ivfc=NA))})}, "iv.dummy.mean", 'basic', "Interval"),
-    list(GEN.IVFC.SIM(SIM.PARAMS.EXACT.MINIMUM.ID, list(0, 1), INTERVAL.AGGR.MEAN, SUMMARY.MAX.CEN, optimisation=F), "iv.min.id.ex", 'basic', "Interval")#,
+    list(GEN.IVFC.SIM(SIM.PARAMS.EXACT.MINIMUM.ID, list(0, 1), INTERVAL.AGGR.MEAN.1, SUMMARY.ORDER.CEN, optimisation=F), "iv.min.id.ex", 'basic', "Interval")#,
 #     list(GEN.KNN.SIM(SIM.PARAMS.EXACT.PRODUCT.ID, 3, optimisation=F), "prod.id.ex", 'basic', "Interval"),
 #     list(GEN.KNN.SIM(SIM.PARAMS.EXACT.LUK.ID, 3, optimisation=F), "luk.id.ex", 'basic', "Interval")
 )
 
-IVFC.LIST = c(IVFC.BASIC
+IVFC.LIST = c(IVFC.BASIC,
+              IVFC.JACCARD
 )
 
 IVFC.LIST = sample(IVFC.LIST, length(IVFC.LIST))
