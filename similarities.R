@@ -81,6 +81,10 @@ KNN.LIST = c(KNN.BASIC
              , KNN.JACCARD
                      )
 
+if(is.finite(CLASSIFIR.NUMBER.LIMIT)){
+    KNN.LIST = KNN.LIST[sample(length(KNN.LIST),CLASSIFIR.NUMBER.LIMIT)]
+}
+
 KNN.LIST = sample(KNN.LIST, length(KNN.LIST))
 KNN = sapply(KNN.LIST,'[[',1)
 KNN.NAME = sapply(KNN.LIST,'[[',2)
@@ -112,6 +116,10 @@ IVFC.BASIC = list(
 IVFC.LIST = c(IVFC.BASIC,
               IVFC.JACCARD
 )
+
+if(is.finite(CLASSIFIR.NUMBER.LIMIT)){
+    IVFC.LIST = IVFC.LIST[sample(length(IVFC.LIST),CLASSIFIR.NUMBER.LIMIT)]
+}
 
 IVFC.LIST = sample(IVFC.LIST, length(IVFC.LIST))
 IVFC = sapply(IVFC.LIST,'[[',1)

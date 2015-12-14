@@ -80,6 +80,48 @@ calculate.stats = function(aggregated){
     return(result)
 }
 
+min.max = function(vect){
+    return(pmin(1, pmax(0, vect)))
+}
+
+normalize.data = function(dataset){
+    dataset = dataset %>%
+        mutate(Age = min.max((Age - 25)/50),
+               ADimension = min.max((ADimension-25)/175),
+               ASolidDimension = min.max(ASolidDimension/75),
+               Color = min.max((Color-1)/3),
+               SmEchogenicity = min.max(SmEchogenicity/4),
+               SmInnerWallThickness = min.max(SmInnerWallThickness/2),
+               TumorVolume = min.max(TumorVolume/1000),
+               APapDimension = min.max(APapDimension/20),
+               SeptumThickness = min.max(SeptumThickness/7),
+               AgeAfterMenopause = min.max(AgeAfterMenopause/20),
+               Ca125 = min.max(Ca125/1000),
+               IotaQuality = min.max( (IotaQuality-1)/5)
+        )
+    return(dataset)
+}
+
+convert.to.interval.format = function(dataset){
+    colNames= c()
+    colNames[seq(1, 2*ncol(dataset), by=2)] = paste(names(dataset), 'min', sep='.')
+    colNames[seq(2, 2*ncol(dataset), by=2)] = paste(names(dataset), 'max', sep='.')
+
+    dataset = dataset[,rep(1:ncol(dataset), each=2)]
+
+    for(i in seq(1, ncol(dataset), by=2)){
+        tmp = dataset[, i]
+        tmp[is.na(tmp)] = 0
+        dataset[, i] = tmp
+
+        tmp = dataset[, i+1]
+        tmp[is.na(tmp)] = 1
+        dataset[, i+1] = tmp
+    }
+    names(dataset) = colNames
+    return(dataset)
+}
+
 # auxiliary functions
 
 printDebug = function(msg)

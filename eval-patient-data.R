@@ -19,14 +19,18 @@ library(igraph)
 
 printDebug("read datasets")
 
-DATA.COLS.NUM = 6
+DATA.COLS.NUM = 25
 
 colClass = c("factor", "numeric", "integer", "integer",
-             rep("numeric", times=2*DATA.COLS.NUM))
+             rep("numeric", times=DATA.COLS.NUM))
 
-ds.training = read.csv(TRAINING.LOCATION, colClasses=colClass)
-ds.test     = read.csv(TEST.LOCATION,     colClasses=colClass)
+ds.training = read.csv(PATIENT.TRAINING.LOCATION, colClasses=colClass)
+ds.test     = read.csv(PATIENT.TEST.LOCATION,     colClasses=colClass)
 
+# ---- convert datasets into interval format
+
+ds.training = bind_cols(ds.training[,1:4], convert.to.interval.format(ds.training[,5:ncol(ds.training)]))
+ds.test = bind_cols(ds.test[,1:4], convert.to.interval.format(ds.test[,5:ncol(ds.test)]))
 
 # ---- define-prototype-build-strategy ----
 printDebug("protype build strategy")
