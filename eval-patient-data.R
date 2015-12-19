@@ -14,6 +14,8 @@ library(dplyr)
 library(Matrix)
 library(igraph)
 
+EVALUATION.OUTPUT.FILE = 'patients-eval-output.RData'
+EVALUATION.OUTPUT.LOCATION = paste(DATASETS.DIR, EVALUATION.OUTPUT.FILE, sep='/')
 
 # ---- read-datasets ----
 

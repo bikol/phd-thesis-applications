@@ -13,8 +13,8 @@ if (THREADS > 1)
                               'KNN.MAX.CASE.BASE.SIZE', 'invPerm', 'PROBE.SIZE',
                               'IVFC', 'IVFC.NAME', 'KNN', 'KNN.NAME', 'build.prototypes',
                               'ds.training', 'ds.test', 'DATA.COLS.NUM',
-                              'diagnosisToOutcome', 'CUTOFF.CRISP', 'W.AUC',
-                              'COMMON.PART', 'INTERVAL.INTERSECTION', 'printDebug', 'DEBUG'))
+                              'diagnosisToOutcome',
+                              'printDebug', 'DEBUG'))
     usedLapply = function(...){ parLapplyLB(CL, ...) }
 } else {
     usedLapply = lapply
@@ -51,12 +51,12 @@ if(!SKIP.TRAINING) {
                     train.data = all.data[!mask,]
 
                     # convert training set into proper format accepted by classifier
-                    ts = apply(train.data, 1 , function(x){
-                        return(list(m=matrix(as.numeric(x[5:(5+DATA.COLS.NUM*2-1)]), nrow=2), type=x[4]))
+                    ts = apply(train.data[, 4:(5+DATA.COLS.NUM*2-1)], 1 , function(x){
+                        return(list(m=matrix(as.numeric(x[2:(2+DATA.COLS.NUM*2-1)]), nrow=2), type=as.integer(x[1])))
                     })
 
                     if(length(ts) > KNN.MAX.CASE.BASE.SIZE) {
-                        classifier = KNN[[j]](ts[sample(length(ts), min(length(ts), KNN.MAX.CASE.BASE.SIZE))])
+                        classifier = KNN[[j]](ts[sample(length(ts), KNN.MAX.CASE.BASE.SIZE)])
                     } else {
                         classifier = KNN[[j]](ts)
                     }
@@ -126,8 +126,8 @@ if(!SKIP.TRAINING) {
                     train.data = all.data[!mask,]
 
                     # convert training set into proper format accepted by classifier
-                    ts = apply(train.data,1 , function(x){
-                        return(list(m=matrix(as.numeric(x[5:(5+DATA.COLS.NUM*2-1)]), nrow=2), type=x[4]))
+                    ts = apply(train.data[, 4:(5+DATA.COLS.NUM*2-1)], 1 , function(x){
+                        return(list(m=matrix(as.numeric(x[2:(2+DATA.COLS.NUM*2-1)]), nrow=2), type=as.integer(x[1])))
                     })
 
                     classifier = IVFC[[j]](build.prototypes(ts))
@@ -201,10 +201,9 @@ if(!SKIP.TRAINING) {
 # ---- select-optimized-classifiers ----
 if(!SKIP.TRAINING) {
     printDebug("select optimized classifiers")
-    #   implement optimisation here
-    optimizedSimilaritiesNames = c(KNN.NAME, IVFC.NAME)
-    optimizedSimilaritiesNames = getOptimizedAggregators(training.stats.all.perf, PERFORMANCE.MEASURE)
 
+    optimizedNames = getOptimizedClassifiers(training.stats.all.perf, PERFORMANCE.MEASURE)
+    training.stats.all.perf = subset(training.stats.all.perf, Method %in% optimizedNames)
 }
 
 ############ TEST DATASET ##################
@@ -245,11 +244,11 @@ if(!SKIP.KNN) {
 
             # convert training set into proper format accepted by classifier
             ts = apply(train.data[,4:(5+DATA.COLS.NUM*2-1)], 1, function(x){
-                return(list(m=matrix(as.numeric(x[2:(2+DATA.COLS.NUM*2-1)]), nrow=2), type=x[1]))
+                return(list(m=matrix(as.numeric(x[2:(2+DATA.COLS.NUM*2-1)]), nrow=2), type=as.integer(x[1])))
             })
 
             if(length(ts) > KNN.MAX.CASE.BASE.SIZE) {
-                classifier = sim(ts[sample(length(ts), min(length(ts), KNN.MAX.CASE.BASE.SIZE))])
+                classifier = sim(ts[sample(length(ts), KNN.MAX.CASE.BASE.SIZE)])
             } else {
                 classifier = sim(ts)
             }
@@ -316,10 +315,9 @@ if(!SKIP.IVFC) {
             train.data = ds.training[((i-1)*PROBE.SIZE+1):(i*PROBE.SIZE), ]
 
             # convert training set into proper format accepted by classifier
-            ts = apply(train.data, 1, function(x){
-                return(list(m=matrix(as.numeric(x[5:(5+DATA.COLS.NUM*2-1)]), nrow=2), type=x[4]))
+            ts = apply(train.data[,4:(5+DATA.COLS.NUM*2-1)], 1, function(x){
+                return(list(m=matrix(as.numeric(x[2:(2+DATA.COLS.NUM*2-1)]), nrow=2), type=as.integer(x[1])))
             })
-
             classifier = sim(build.prototypes(ts))
 
             d = apply(ds.test[, 5:(5+DATA.COLS.NUM*2-1)], 1, function(row) {

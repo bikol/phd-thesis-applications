@@ -5,7 +5,6 @@ rm(list=ls())
 source("config.R")
 source("stats.R")
 source("similarities.R")
-source("mcn-test.R")
 source("utils.R")
 
 library(parallel)
@@ -14,6 +13,9 @@ library(dplyr)
 library(Matrix)
 library(igraph)
 
+
+EVALUATION.OUTPUT.FILE = 'models-eval-output.RData'
+EVALUATION.OUTPUT.LOCATION = paste(DATASETS.DIR, EVALUATION.OUTPUT.FILE, sep='/')
 
 # ---- read-datasets ----
 
@@ -33,9 +35,7 @@ printDebug("protype build strategy")
 build.prototypes = function(ts){
     return(list(
         list(m=matrix(rep(c(0, 0.5), times=DATA.COLS.NUM), nrow=2), type=0),
-        list(m=matrix(rep(c(0.5, 1), times=DATA.COLS.NUM), nrow=2), type=1),
-        list(m=matrix(rep(c(0.4, 0.6), times=DATA.COLS.NUM), nrow=2), type=0),
-        list(m=matrix(rep(c(0.4, 0.6), times=DATA.COLS.NUM), nrow=2), type=1)
+        list(m=matrix(rep(c(0.5, 1), times=DATA.COLS.NUM), nrow=2), type=1)
     ))
 }
 

@@ -63,26 +63,12 @@ KNN.JACCARD = apply(cbind(expand.grid(SIM.PARAMS, KS, NBS.SELECTORS, VOTE.STRATE
                               'Jaccard', 'Interval')
                      })
 
-
-KNN.BASIC = list(
-        list(function(ts){return(function(x){return(sample(2,1)-1)})}, "dummy.random", 'basic', "Interval"),
-        list(function(ts){return(function(x){round((x[1,1]+x[2,1])/2)})}, "dummy.mean", 'basic', "Interval"),
-        list(GEN.KNN.SIM(SIM.PARAMS.EXACT.MINIMUM.ID, 3, NBS.SELECTOR.ORDER.CEN, VOTE.STRATEGY.MAJRORITY, optimisation=F), "min.id.ex", 'basic', "Interval"),
-        list(GEN.KNN.SIM(SIM.PARAMS.EXACT.PRODUCT.ID, 3, NBS.SELECTOR.ORDER.CEN, VOTE.STRATEGY.MAJRORITY, optimisation=F), "prod.id.ex", 'basic', "Interval"),
-        list(GEN.KNN.SIM(SIM.PARAMS.EXACT.LUK.ID, 3, NBS.SELECTOR.ORDER.CEN, VOTE.STRATEGY.MAJRORITY, optimisation=F), "luk.id.ex", 'basic', "Interval")
-    )
-
-
-
-
 # at least 2 classifiers must be defined
 # name and class must not contain '-' and '=' signs (must be valid data.frame column name)
-KNN.LIST = c(KNN.BASIC
-             , KNN.JACCARD
-                     )
+KNN.LIST = c(KNN.JACCARD)
 
-if(is.finite(CLASSIFIR.NUMBER.LIMIT)){
-    KNN.LIST = KNN.LIST[sample(length(KNN.LIST),CLASSIFIR.NUMBER.LIMIT)]
+if(is.finite(CLASSIFIER.NUMBER.LIMIT)){
+    KNN.LIST = KNN.LIST[sample(length(KNN.LIST), CLASSIFIER.NUMBER.LIMIT)]
 }
 
 KNN.LIST = sample(KNN.LIST, length(KNN.LIST))
@@ -105,20 +91,10 @@ IVFC.JACCARD = apply(cbind(expand.grid(SIM.PARAMS, INTERVAL.AGGRS, SUMMARIES),
                              'Jaccard', 'Interval')
                     })
 
-IVFC.BASIC = list(
-    list(function(ts){return(function(x){return(list(type=sample(2,1)-1, ivfc=NA))})}, "iv.dummy.random", 'basic', "Interval"),
-    list(function(ts){return(function(x){return(list(type=round((x[1,1]+x[2,1])/2), ivfc=NA))})}, "iv.dummy.mean", 'basic', "Interval"),
-    list(GEN.IVFC.SIM(SIM.PARAMS.EXACT.MINIMUM.ID, list(0, 1), INTERVAL.AGGR.MEAN.1, SUMMARY.ORDER.CEN, optimisation=F), "iv.min.id.ex", 'basic', "Interval")#,
-#     list(GEN.KNN.SIM(SIM.PARAMS.EXACT.PRODUCT.ID, 3, optimisation=F), "prod.id.ex", 'basic', "Interval"),
-#     list(GEN.KNN.SIM(SIM.PARAMS.EXACT.LUK.ID, 3, optimisation=F), "luk.id.ex", 'basic', "Interval")
-)
+IVFC.LIST = c(IVFC.JACCARD)
 
-IVFC.LIST = c(IVFC.BASIC,
-              IVFC.JACCARD
-)
-
-if(is.finite(CLASSIFIR.NUMBER.LIMIT)){
-    IVFC.LIST = IVFC.LIST[sample(length(IVFC.LIST),CLASSIFIR.NUMBER.LIMIT)]
+if(is.finite(CLASSIFIER.NUMBER.LIMIT)){
+    IVFC.LIST = IVFC.LIST[sample(length(IVFC.LIST), CLASSIFIER.NUMBER.LIMIT)]
 }
 
 IVFC.LIST = sample(IVFC.LIST, length(IVFC.LIST))
@@ -131,3 +107,34 @@ IVFC.BINDED.DESCRIPTION = data.frame(Method=IVFC.NAME,
                                     Class="IVFC",
                                     Subclass=IVFC.CLASS,
                                     Subsubclass=IVFC.SUBCLASS)
+
+
+getOptimizedClassifiers = function(inputData, performanceMeasure) {
+
+    df = subset(inputData, Measure==performanceMeasure & Method %in% KNN.NAME)
+    if(nrow(df)>0){
+        if(PERFORMANCE.MEASURE.DESC){
+            KNN.OPT = arrange(df, desc(Value))[1:min(nrow(df), CLASSIFIER.OPTIMISATION.NUMBER), 1]
+        } else {
+            KNN.OPT = arrange(df, Value)[1:min(nrow(df), CLASSIFIER.OPTIMISATION.NUMBER), 1]
+        }
+    } else {
+        KNN.OPT = c()
+    }
+
+    df = subset(inputData, Measure==performanceMeasure & Method %in% IVFC.NAME)
+    if(nrow(df)>0){
+        if(PERFORMANCE.MEASURE.DESC) {
+            IVFC.OPT = arrange(df, desc(Value))[1:min(nrow(df), CLASSIFIER.OPTIMISATION.NUMBER), 1]
+        } else {
+            IVFC.OPT = arrange(df, Value)[1:min(nrow(df), CLASSIFIER.OPTIMISATION.NUMBER), 1]
+        }
+    } else {
+        IVFC.OPT = c()
+    }
+
+    SIMILARITIES.OPT = c(KNN.OPT,
+                         IVFC.OPT)
+
+    return(SIMILARITIES.OPT)
+}

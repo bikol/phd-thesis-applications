@@ -16,6 +16,20 @@ diagnosisToOutcome = function(p){
     }
 }
 
+multiclassToOutcome = function(p){
+    # p is two element vector, p[[1]] contains class label returned by classifier,
+    # p[2:length(p)] contain proper labels of given instance
+    d = p[2:length(p)]
+    d = d[!is.na(d)]
+    if(is.na(p[[1]])){
+        return("N0")
+    }else if (p[[1]] %in% d) {
+        return("TN")
+    }else {
+        return("FP")
+    }
+}
+
 orig.models.outcomes = function(data){
     toReturn = usedLapply(1:length(METHODS),function(i){
         name = METHODS.NAME[[i]]
@@ -128,4 +142,18 @@ printDebug = function(msg)
 {
     if (DEBUG)
         cat(paste(format(Sys.time(), "[%X]"), msg, "\n"))
+}
+
+read.keel = function(file){
+    skip = 17
+    text = gsub('\\?','[0,10]', readChar(file, 1e6))
+    text = gsub('\\[|\\]|\\{|\\}', '', text)
+    data = scan(text=text, sep = ",",
+                what=list(numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), numeric(), integer(), integer(), integer(), integer()),
+                skip=skip, comment.char='@', fill=T, quiet = T)
+    df = data.frame(data)
+    names(df)[seq(1, 24, by=2)]=paste0('Indicator', 1:12,'.min')
+    names(df)[seq(2, 24, by=2)]=paste0('Indicator', 1:12,'.max')
+    names(df)[25:28]= paste0("Class",1:4)
+    return(df)
 }
