@@ -751,7 +751,7 @@ GEN.AGG.INTERVAL.MEAN = function(weightLower, weightUpper = NULL, r=1){
         }
 
         if(sum.wL==0 || sum.wU==0){
-            return(NA)
+            return(c(0, 1))
         } else {
             a=(sum((m[1,]^r) * wL) / sum.wL) ^ (1/r)
             b=(sum((m[2,]^r) * wU) / sum.wU) ^ (1/r)
@@ -779,12 +779,6 @@ INTERVAL.AGGRS = list(INTERVAL.AGGR.MEAN.1,
                       GEN.AGG.INTERVAL.ORDER(NBS.SELECTOR.PARTIAL.LATTICE))
 INTERVAL.AGGRS.NAME = c('mean_1','mean_w', 'min', 'cen', 'max', 'dom', 'lat')
 
-GEN.SUMMARY.ORDER = function(nbs.selector) {
-    force(nbs.selector)
-    return(function(m){
-
-    })
-}
 
 SUMMARY.ORDER.CEN = function(m){
     return(as.numeric(colnames(m)[[which.max(m[1,]+m[2,])]]))
