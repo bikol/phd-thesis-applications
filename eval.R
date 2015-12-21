@@ -10,17 +10,15 @@ if (THREADS > 1)
     clusterCall(CL, function(){ set.seed(SEED) })
 
     clusterExport(cl=CL, list('topo_sort', 'graph_from_adjacency_matrix', 'DescIterBinSearch', 'AscIterBinSearch',
-                              'KNN.MAX.CASE.BASE.SIZE', 'invPerm', 'PROBE.SIZE',
-                              'IVFC', 'IVFC.NAME', 'KNN', 'KNN.NAME', 'build.prototypes',
+                              'KNN.MAX.CASE.BASE.SIZE', 'PROBE.SIZE',
+                              'IVFC', 'IVFC.NAME', 'KNN', 'KNN.NAME',
                               'ds.training', 'ds.test', 'DATA.COLS.NUM',
-                              'diagnosisToOutcome',
+                              'diagnosisToOutcome', 'PROTOTYPES',
                               'printDebug', 'DEBUG'))
     usedLapply = function(...){ parLapplyLB(CL, ...) }
 } else {
     usedLapply = lapply
 }
-
-
 
 
 # ---- training-statistics-knn ----
@@ -112,36 +110,13 @@ if(!SKIP.TRAINING) {
 
                 # select only cases from this probe
                 all.data = ds.training[((i-1)*PROBE.SIZE+1):(i*PROBE.SIZE), ]
-                # randomise input to obrain different fold for each probe
-                shuffle = sample(nrow(all.data))
-                all.data = all.data[shuffle, ]
 
-                fold.size = PROBE.SIZE/10
+                classifier = IVFC[[j]](PROTOTYPES)
 
-                d = sapply(1:10, function(fold) {
-                    # build training and test set for 10 fold CV
-                    mask = rep(F, PROBE.SIZE)
-                    mask[((fold-1)*fold.size+1):(fold*fold.size)] = T
-                    test.data = all.data[mask,]
-                    train.data = all.data[!mask,]
-
-                    # convert training set into proper format accepted by classifier
-                    ts = apply(train.data[, 4:(5+DATA.COLS.NUM*2-1)], 1 , function(x){
-                        return(list(m=matrix(as.numeric(x[2:(2+DATA.COLS.NUM*2-1)]), nrow=2), type=as.integer(x[1])))
-                    })
-
-                    classifier = IVFC[[j]](build.prototypes(ts))
-
-                    # selection of appropriate columns
-                    tmp = apply(test.data[, 5:(5+DATA.COLS.NUM*2-1)], 1, function(row) {
-                        # matrix in format required by aggregation method is created and passed into classifier
-                        return(classifier(matrix(row, nrow=2)))
-                    })
-
-                    return(tmp)
+                d = apply(all.data[, 5:(5+DATA.COLS.NUM*2-1)], 1, function(row) {
+                    # matrix in format required by aggregation method is created and passed into aggr
+                    return(classifier(matrix(row, nrow=2)))
                 })
-                # undo the shuffling to enable comparison with expected results
-                d = c(d)[invPerm(shuffle)]
                 diags[((i-1)*PROBE.SIZE+1):(i*PROBE.SIZE)] = d
             }
             converted = apply(cbind(sapply(diags, '[[','type'), ds.training$MalignancyCharacter),
@@ -318,7 +293,7 @@ if(!SKIP.IVFC) {
             ts = apply(train.data[,4:(5+DATA.COLS.NUM*2-1)], 1, function(x){
                 return(list(m=matrix(as.numeric(x[2:(2+DATA.COLS.NUM*2-1)]), nrow=2), type=as.integer(x[1])))
             })
-            classifier = sim(build.prototypes(ts))
+            classifier = sim(PROTOTYPES)
 
             d = apply(ds.test[, 5:(5+DATA.COLS.NUM*2-1)], 1, function(row) {
                 # matrix in format required by aggregation method is created and passed into aggr

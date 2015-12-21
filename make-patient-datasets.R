@@ -11,14 +11,29 @@ library(sampling)
 # ---- db-read ----
 
 # list of required columns
-COLS.ALL = c("OvarianCancerInFamily", "HormoneReplacementTherapy", "Age",
-  "ADimension", "PainAtExamination", "Ascites", "PapBloodFlow",
-  "Solid", "ASolidDimension", "InnerWall", "Shadow", "Color", "Septum",
+COLS.ALL = c(
+    # "OvarianCancerInFamily", "HormoneReplacementTherapy",
+  "Age",
+  "ADimension",
+  # "PainAtExamination", "Ascites",
+  "PapBloodFlow",
+  "Solid", "ASolidDimension", "InnerWall",
+  # "Shadow",
+  "Color",
+  # "Septum",
   "SmEchogenicity", "Location", "SmInnerWallThickness", "TumorVolume",
-  "Pap", "APapDimension", "SeptumThickness", "AgeAfterMenopause",
-  "Ca125", "Ri", "UterusRemoved", "IotaQuality")
-COLS.SURE = c("HormoneReplacementTherapy", "Age", "PainAtExamination", "AgeAfterMenopause",
-              "UterusRemoved")
+  "Pap", "APapDimension",
+  # "SeptumThickness",
+  "AgeAfterMenopause", "Ca125", "Ri",
+  # "UterusRemoved",
+  "IotaQuality")
+COLS.SURE = c(
+    # "HormoneReplacementTherapy",
+              "Age",
+              # "PainAtExamination",
+              "AgeAfterMenopause"
+              # , "UterusRemoved"
+              )
 COLS.OBSC = COLS.ALL[!COLS.ALL %in% COLS.SURE]
 
 
@@ -33,7 +48,7 @@ db[with(db, which(MalignancyCharacter == 2)), "MalignancyCharacter"] = 1
 
 db[with(db, which(is.na(PapBloodFlow)    & Pap == 0)),    "PapBloodFlow"]    = 0
 db[with(db, which(is.na(APapDimension)   & Pap == 0)),    "APapDimension"]   = 0
-db[with(db, which(is.na(SeptumThickness) & Septum == 0)), "SeptumThickness"] = 0
+# db[with(db, which(is.na(SeptumThickness) & Septum == 0)), "SeptumThickness"] = 0
 db[with(db, which(grepl("^Sms", PatientId) & is.na(Ri))), "Ri"] = 1
 db[with(db, which(grepl("^Sz",  PatientId) & is.na(Ri) & Color == 1)), "Ri"] = 1
 

@@ -10,7 +10,6 @@ source("utils.R")
 library(parallel)
 library(reshape2)
 library(dplyr)
-library(Matrix)
 library(igraph)
 
 
@@ -32,12 +31,10 @@ ds.test     = read.csv(TEST.LOCATION,     colClasses=colClass)
 
 # ---- define-prototype-build-strategy ----
 printDebug("protype build strategy")
-build.prototypes = function(ts){
-    return(list(
-        list(m=matrix(rep(c(0, 0.5), times=DATA.COLS.NUM), nrow=2), type=0),
-        list(m=matrix(rep(c(0.5, 1), times=DATA.COLS.NUM), nrow=2), type=1)
-    ))
-}
+PROTOTYPES = list(
+    list(m=matrix(rep(c(0, 0.5), times=DATA.COLS.NUM), nrow=2), type=0),
+    list(m=matrix(rep(c(0.5, 1), times=DATA.COLS.NUM), nrow=2), type=1)
+)
 
 # ---- main-evaluation-procedure
 source('eval.R')

@@ -7,11 +7,11 @@ source("stats.R")
 source("similarities.R")
 source("mcn-test.R")
 source("utils.R")
+source("prototypes.R")
 
 library(parallel)
 library(reshape2)
 library(dplyr)
-library(Matrix)
 library(igraph)
 
 EVALUATION.OUTPUT.FILE = 'patients-eval-output.RData'
@@ -21,7 +21,7 @@ EVALUATION.OUTPUT.LOCATION = paste(DATASETS.DIR, EVALUATION.OUTPUT.FILE, sep='/'
 
 printDebug("read datasets")
 
-DATA.COLS.NUM = 25
+DATA.COLS.NUM = 17
 
 colClass = c("factor", "numeric", "integer", "integer",
              rep("numeric", times=DATA.COLS.NUM))
@@ -36,14 +36,15 @@ ds.test = bind_cols(ds.test[,1:4], convert.to.interval.format(ds.test[,5:ncol(ds
 
 # ---- define-prototype-build-strategy ----
 printDebug("protype build strategy")
-build.prototypes = function(ts){
-    return(list(
-        list(m=matrix(rep(c(0, 0.5), times=DATA.COLS.NUM), nrow=2), type=0),
-        list(m=matrix(rep(c(0.5, 1), times=DATA.COLS.NUM), nrow=2), type=1),
-        list(m=matrix(rep(c(0.4, 0.6), times=DATA.COLS.NUM), nrow=2), type=0),
-        list(m=matrix(rep(c(0.4, 0.6), times=DATA.COLS.NUM), nrow=2), type=1)
-    ))
-}
+
+PROTOTYPES = list(
+    list(m=matrix(gen.0, nrow=2), type=0),
+    list(m=matrix(post.0, nrow=2), type=0),
+    list(m=matrix(pre.1, nrow=2), type=1),
+    list(m=matrix(post.1, nrow=2), type=1),
+    list(m=matrix(pre.2, nrow=2), type=1),
+    list(m=matrix(post.2, nrow=2), type=1)
+)
 
 # ---- main-evaluation-procedure
 source('eval.R')
