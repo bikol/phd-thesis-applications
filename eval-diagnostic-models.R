@@ -11,6 +11,7 @@ library(parallel)
 library(reshape2)
 library(dplyr)
 library(igraph)
+library(Matrix)
 
 
 EVALUATION.OUTPUT.FILE = 'models-eval-output.RData'

@@ -48,6 +48,7 @@ db[with(db, which(MalignancyCharacter == 2)), "MalignancyCharacter"] = 1
 
 db[with(db, which(is.na(PapBloodFlow)    & Pap == 0)),    "PapBloodFlow"]    = 0
 db[with(db, which(is.na(APapDimension)   & Pap == 0)),    "APapDimension"]   = 0
+db[with(db, which(Location == 2)),    "Location"]   = 0
 # db[with(db, which(is.na(SeptumThickness) & Septum == 0)), "SeptumThickness"] = 0
 db[with(db, which(grepl("^Sms", PatientId) & is.na(Ri))), "Ri"] = 1
 db[with(db, which(grepl("^Sz",  PatientId) & is.na(Ri) & Color == 1)), "Ri"] = 1

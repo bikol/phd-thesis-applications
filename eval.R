@@ -13,7 +13,7 @@ if (THREADS > 1)
                               'KNN.MAX.CASE.BASE.SIZE', 'PROBE.SIZE',
                               'IVFC', 'IVFC.NAME', 'KNN', 'KNN.NAME',
                               'ds.training', 'ds.test', 'DATA.COLS.NUM',
-                              'diagnosisToOutcome', 'PROTOTYPES',
+                              'diagnosisToOutcome', 'PROTOTYPES', 'invPerm',
                               'printDebug', 'DEBUG'))
     usedLapply = function(...){ parLapplyLB(CL, ...) }
 } else {
@@ -28,6 +28,7 @@ if(!SKIP.TRAINING) {
 
         outcomes.knns = usedLapply(1:length(KNN), function(j){
             printDebug(paste0("Using ", KNN.NAME[[j]]," classifier"))
+            startTime = as.integer(Sys.time())
             diags = c()
             # split training data set into separate probes
             for(i in 1:(nrow(ds.training)/PROBE.SIZE)) {
@@ -72,6 +73,7 @@ if(!SKIP.TRAINING) {
             }
             converted = apply(cbind(diags, ds.training$MalignancyCharacter),
                               1, diagnosisToOutcome)
+            printDebug(paste0("Finished ", KNN.NAME[[j]]," classifier in ", as.integer(Sys.time()) - startTime, ' secs'))
             return(converted)
         })
 
@@ -103,6 +105,7 @@ if(!SKIP.TRAINING) {
 
         outcomes.ivfcs = usedLapply(1:length(IVFC), function(j){
             printDebug(paste0("Using ",IVFC.NAME[[j]]," classifier"))
+            startTime = as.integer(Sys.time())
             diags = c()
             # split training data set into separate probes
             for(i in 1:(nrow(ds.training)/PROBE.SIZE)) {
@@ -121,6 +124,7 @@ if(!SKIP.TRAINING) {
             }
             converted = apply(cbind(sapply(diags, '[[','type'), ds.training$MalignancyCharacter),
                               1, diagnosisToOutcome)
+            printDebug(paste0("Finished ", IVFC.NAME[[j]]," classifier in ", as.integer(Sys.time()) - startTime, ' secs'))
             return(converted)
         })
 
@@ -204,6 +208,7 @@ if(!SKIP.KNN) {
 
     outcomes.knns = usedLapply(1:length(evaluated.knns), function(j){
         printDebug(paste0("Using ", evaluated.knns[j]," classifier"))
+        startTime = as.integer(Sys.time())
         i = which(evaluated.knns[j] == KNN.NAME)
         sim = KNN[[i]]
 
@@ -236,6 +241,7 @@ if(!SKIP.KNN) {
         }
         converted = apply(cbind(diags, ds.test$MalignancyCharacter),
                           1, diagnosisToOutcome)
+        printDebug(paste0("Finished ", evaluated.knns[j]," classifier in ", as.integer(Sys.time()) - startTime, ' secs'))
         return(converted)
     })
 
@@ -276,6 +282,7 @@ if(!SKIP.IVFC) {
 
     outcomes.ivfcs = usedLapply(1:length(evaluated.ivfcs), function(j){
         printDebug(paste0("Using ",evaluated.ivfcs[j]," classifier"))
+        startTime = as.integer(Sys.time())
         i = which(evaluated.ivfcs[j] == IVFC.NAME)
         sim = IVFC[[i]]
 
@@ -303,6 +310,7 @@ if(!SKIP.IVFC) {
         }
         converted = apply(cbind(sapply(diags, '[[','type'), ds.test$MalignancyCharacter),
                           1, diagnosisToOutcome)
+        printDebug(paste0("Finished ", evaluated.ivfcs[j]," classifier in ", as.integer(Sys.time()) - startTime, ' secs'))
         return(converted)
     })
 
