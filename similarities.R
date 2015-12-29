@@ -63,9 +63,27 @@ KNN.JACCARD = apply(cbind(expand.grid(SIM.PARAMS, KS, NBS.SELECTORS, VOTE.STRATE
                               'Jaccard', 'Interval')
                      })
 
+KNN.JACCARD.1 = apply(cbind(expand.grid(SIM.PARAMS, NBS.SELECTORS),
+                           expand.grid(SIM.PARAMS.NAME, NBS.SELECTORS.NAME)),
+                     1, function(row){
+                         list(GEN.KNN.SIM(row[[1]], 1, row[[2]], VOTE.STRATEGY.ALL),
+                              paste('knn_', 1,'_(', row[[3]], ')_(', row[[4]], ')_', 'all', sep=''),
+                              'Jaccard', 'Interval')
+                     })
+
+KNN.JACCARD.2 = apply(cbind(expand.grid(SIM.PARAMS, NBS.SELECTORS, VOTE.STRATEGIES[2:3]),
+                           expand.grid(SIM.PARAMS.NAME, NBS.SELECTORS.NAME, VOTE.STRATEGIES.NAME[2:3])),
+                     1, function(row){
+                         list(GEN.KNN.SIM(row[[1]], 2, row[[2]], row[[3]]),
+                              paste('knn_', 2,'_(', row[[4]], ')_(', row[[5]], ')_', row[[6]], sep=''),
+                              'Jaccard', 'Interval')
+                     })
+
+
+
 # at least 2 classifiers must be defined
 # name and class must not contain '-' and '=' signs (must be valid data.frame column name)
-KNN.LIST = c(KNN.JACCARD)
+KNN.LIST = c(KNN.JACCARD, KNN.JACCARD.1, KNN.JACCARD.2)
 
 if(is.finite(CLASSIFIER.NUMBER.LIMIT)){
     KNN.LIST = KNN.LIST[sample(length(KNN.LIST), CLASSIFIER.NUMBER.LIMIT)]

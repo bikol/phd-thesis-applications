@@ -634,7 +634,7 @@ SIM.PARAMS.NAME = c('J_min_id',
                     # , 'J_SS_25_id'
                     )
 
-KS = c(1,2,3,4,5)
+KS = c(3,4,5)
 
 # this is Hurwicz with param 0.5
 # L. Hurwicz, A class of criteria for decisionmaking under ignorance, Cowles Comission Paper, 356, 1951
