@@ -15,7 +15,8 @@ if (THREADS > 1)
                               'ds.training', 'ds.test', 'DATA.COLS.NUM',
                               'diagnosisToOutcome', 'PROTOTYPES', 'invPerm',
                               'printDebug', 'DEBUG'))
-    usedLapply = function(...){ parLapplyLB(CL, ...) }
+    # usedLapply = function(...){ parLapplyLB(CL, ...) }
+    usedLapply = function(...){ clusterApplyLB(CL, ...) }
 } else {
     usedLapply = lapply
 }
