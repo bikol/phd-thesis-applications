@@ -32,8 +32,36 @@ strategies on these data.
 In the following document we present an overview of the performance of aggregation strategies. To decode names of the aggregation strategies, please refer to comments and code in `aggregators.R` and `aggregators-helpers.R` scripts.
 
 ```{r load-data-and-scripts}
-load("datasets/evaluation-output.RData")
+source("config.R")
 source("results-overview.R")
+
+e.patients = new.env()
+e.models = new.env()
+e.aggr = new.env()
+load("datasets/evaluation-output.RData", e.aggr)
+load("datasets/patients-eval-output.RData", e.patients)
+load("datasets/models-eval-output.RData", e.models)
+
+patients.training.stats.all = convertClasses(get("training.stats.all", envir = e.patients))
+patients.training.stats.all.perf = generatePerf(patients.training.stats.all)
+patients.test.stats.all = convertClasses(get("test.stats.all", envir = e.patients))
+patients.test.stats.all.perf = convertClasses(get("test.stats.all.perf", envir = e.patients))
+patients.test.stats.all.perf.wide = convertClasses(get("test.stats.all.perf.wide", envir = e.patients))
+
+models.training.stats.all = convertClasses(get("training.stats.all", envir = e.models))
+models.training.stats.all.perf = generatePerf(models.training.stats.all)
+models.test.stats.all = convertClasses(get("test.stats.all", envir = e.models))
+models.test.stats.all.perf = convertClasses(get("test.stats.all.perf", envir = e.models))
+models.test.stats.all.perf.wide = convertClasses(get("test.stats.all.perf.wide", envir = e.models))
+
+required.training.stats.all = classesForOEA(subset(get("training.stats.all", envir = e.aggr), (Class=="Model"|Method=="mean_(dec_(owa_min))_cen_0.025")))
+required.training.stats.all.perf = classesForOEA(subset(get("training.stats.all.perf", envir = e.aggr), (Class=="Model"|Method=="mean_(dec_(owa_min))_cen_0.025")))
+required.test.stats.all.perf = classesForOEA(subset(get("test.stats.all", envir = e.aggr), (Class=="Model"|Method=="mean_(dec_(owa_min))_cen_0.025")))
+
+# build non perf version of test results
+required.test.stats.all = required.test.stats.all.perf[
+    rep(1:nrow(required.test.stats.all.perf), each=length(OBSCURE.PERCENTAGES)), ]
+required.test.stats.all$ObscureLevel = OBSCURE.PERCENTAGES
 ```
 
 # Results
@@ -42,27 +70,49 @@ This section presents the results obtained on the training and test set. More de
 resutls consideres selected aggregation strategies which may fulfil medical requirements
 in the diagnostic process.
 
-## Training set
+## Training set - patients
 
 The following figure presents the performance top 5 aggregation strategies within each group on the training set (by the lowest average total cost). For the reference, the original and uncertaintified models are also plotted.
 
-```{r plots-training}
-agg.sub = subset(binded.stats.all.perf,
-                 Measure==PERFORMANCE.MEASURE & Class=='Aggregation') %>%
+```{r plots-training-patients}
+agg.sub = subset(patients.training.stats.all.perf,
+                 Measure==PERFORMANCE.MEASURE & (Class=='Similarity')) %>%
           group_by(Class, Subclass, Subsubclass)
 
 bestAggregators = NA
 if (PERFORMANCE.MEASURE.DESC) {
-    bestAggregators = top_n(agg.sub, 5, Value.training)$Method
+    bestAggregators = top_n(agg.sub, 5, Value)$Method
 } else {
-    bestAggregators = top_n(agg.sub, 5, -Value.training)$Method }
+    bestAggregators = top_n(agg.sub, 5, -Value)$Method 
+}
 
-plotStatsTrainingSet(subset(training.stats.all,
-                            Method %in% bestAggregators | Class=="Model" | Class=="Similarity"),
+plotStatsTrainingSet(subset(bind_rows(patients.training.stats.all, required.training.stats.all), 
+                            Method %in% bestAggregators | Class=='Model'),
                      PERFORMANCE.MEASURE)
 ```
 
-## Test set
+## Training set - models
+
+The following figure presents the performance top 5 aggregation strategies within each group on the training set (by the lowest average total cost). For the reference, the original and uncertaintified models are also plotted.
+
+```{r plots-training-models}
+agg.sub = subset(models.training.stats.all.perf,
+                 Measure==PERFORMANCE.MEASURE & (Class=='Similarity')) %>%
+          group_by(Class, Subclass, Subsubclass)
+
+bestAggregators = NA
+if (PERFORMANCE.MEASURE.DESC) {
+    bestAggregators = top_n(agg.sub, 5, Value)$Method
+} else {
+    bestAggregators = top_n(agg.sub, 5, -Value)$Method 
+}
+
+plotStatsTrainingSet(subset(bind_rows(models.training.stats.all, required.training.stats.all), 
+                            Method %in% bestAggregators | Class=='Model'),
+                     PERFORMANCE.MEASURE)
+```
+
+## Test set - patients
 
 The left part of the following figure compares the total cost performance on the test set among the
 original and uncertaintified models and each aggregation group (by the lowest cost). The right 
@@ -70,22 +120,102 @@ part compares accuracy, sensitivity, specificity and decisiveness on test set am
 original and uncertaintified models and each aggregation group.
  
 
-```{r plots-test}
-plotStatsTestSet(test.stats.all,
+```{r plots-test-patients}
+plotStatsTestSet(bind_rows(patients.test.stats.all.perf, required.test.stats.all.perf),
                   PERFORMANCE.MEASURE, PERFORMANCE.MEASURE.DESC,
                   c("Sensitivity", "Specificity", "Decisiveness", "Accuracy"))
 ```
 
-## Selected aggregation strategies
+## Test set - patients - detailed
+
+```{r plots-test-knn-patients}
+agg.sub = subset(patients.training.stats.all.perf,
+                 Measure==PERFORMANCE.MEASURE & (Class=='Similarity')) %>%
+          group_by(Class, Subclass, Subsubclass)
+
+bestAggregators = NA
+if (PERFORMANCE.MEASURE.DESC) {
+    bestAggregators = top_n(agg.sub, 5, Value)$Method
+} else {
+    bestAggregators = top_n(agg.sub, 5, -Value)$Method 
+}
+
+plotStatsKnnTestSet(subset(bind_rows(patients.test.stats.all, required.test.stats.all), 
+                            Method %in% bestAggregators | Class=='Model'),
+                     PERFORMANCE.MEASURE)
+```
+
+## Test set - models
+
+The left part of the following figure compares the total cost performance on the test set among the
+original and uncertaintified models and each aggregation group (by the lowest cost). The right 
+part compares accuracy, sensitivity, specificity and decisiveness on test set among among the 
+original and uncertaintified models and each aggregation group.
+ 
+
+```{r plots-test-models}
+plotStatsTestSet(bind_rows(models.test.stats.all.perf, required.test.stats.all.perf),
+                  PERFORMANCE.MEASURE, PERFORMANCE.MEASURE.DESC,
+                  c("Sensitivity", "Specificity", "Decisiveness", "Accuracy"))
+```
+
+## Test set - models - detailed
+
+```{r plots-test-knn-models}
+agg.sub = subset(models.training.stats.all.perf,
+                 Measure==PERFORMANCE.MEASURE & (Class=='Similarity')) %>%
+          group_by(Class, Subclass, Subsubclass)
+
+bestAggregators = NA
+if (PERFORMANCE.MEASURE.DESC) {
+    bestAggregators = top_n(agg.sub, 5, Value)$Method
+} else {
+    bestAggregators = top_n(agg.sub, 5, -Value)$Method 
+}
+
+plotStatsKnnTestSet(subset(bind_rows(models.test.stats.all, required.test.stats.all), 
+                            Method %in% bestAggregators | Class=='Model'),
+                     PERFORMANCE.MEASURE)
+```
+
+## Selected aggregation strategies - patients
 
 The left part of the following figure compares the total cost performance on the test set of the
 aggreagation strategies which fulfil medical requirements in the diagnostic process. The right part
 compares accuracy, sensitivity, specificity and decisiveness on these aggregation strategies. 
  
-```{r plots-selected}
-# plotSelectedAggregationOperators(selected.aggrs,
-#                                  PERFORMANCE.MEASURE, 
-#                                  c("Sensitivity", "Specificity", "Decisiveness", "Accuracy"))
+```{r plots-selected-patients}
+selected.aggrs = subset(patients.test.stats.all.perf.wide,
+                        Class=="Similarity" &
+#                             Decisiveness>=0.95 &
+#                             Decisiveness<1.0 &
+                            Sensitivity>Specificity &
+                            Sensitivity>=0.90 &
+                            Specificity>0.8)
+
+plotSelectedAggregationOperators(selected.aggrs,
+                                 PERFORMANCE.MEASURE, 
+                                 c("Sensitivity", "Specificity", "Decisiveness", "Accuracy"))
+```
+
+## Selected aggregation strategies - models
+
+The left part of the following figure compares the total cost performance on the test set of the
+aggreagation strategies which fulfil medical requirements in the diagnostic process. The right part
+compares accuracy, sensitivity, specificity and decisiveness on these aggregation strategies. 
+ 
+```{r plots-selected-models}
+selected.aggrs = subset(models.test.stats.all.perf.wide,
+                        Class=="Similarity" &
+#                             Decisiveness>=0.95 &
+#                             Decisiveness<1.0 &
+                            Sensitivity>Specificity &
+                            Sensitivity>=0.90 &
+                            Specificity>0.8)
+
+plotSelectedAggregationOperators(selected.aggrs,
+                                 PERFORMANCE.MEASURE, 
+                                 c("Sensitivity", "Specificity", "Decisiveness", "Accuracy"))
 ```
 
 ## Difference between aggregation strategies and uncertaintified models

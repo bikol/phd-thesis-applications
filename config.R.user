@@ -3,6 +3,7 @@ DEBUG               = TRUE
 OBSUCRE.REPEAT      = 1
 
 KNN.MAX.CASE.BASE.SIZE   = 5
+CLASSIFIER.NUMBER.LIMIT   = 12
 
 SKIP.TRAINING       = F
 SKIP.KNN            = F

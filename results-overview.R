@@ -15,8 +15,39 @@ MARGINS.REALDATA.LEFT  = unit(c(0, 0.1, 0.07, 0), "npc")
 MARGINS.REALDATA.RIGHT = unit(c(0, 0.02, 0.07, 0.07), "npc")
 LEGEND.SPACING = 5
 
+classesForOEA = function(df){
+    df[df$Method == "mean_(dec_(owa_min))_cen_0.025", ]$Class = 'Model'
+    df[df$Method == "mean_(dec_(owa_min))_cen_0.025", ]$Subclass = 'Original'
+    df[df$Method == "mean_(dec_(owa_min))_cen_0.025", ]$Subsubclass = NA
+    df[df$Method == "mean_(dec_(owa_min))_cen_0.025", ]$Method = "OEA"
+    return(df)
+}
 
-plotStatsTrainingSet = function(stats, performanceMeasure)
+convertClasses = function(df){
+    result = mutate(df,
+                    Subsubclass= Class,
+                    Class = 'Similarity',
+                    Subclass = sub('\\)_.*', '', sub('(ivfc_\\()|(knn_._\\()','', Method))
+                    )
+    return(result)
+}
+
+generatePerf = function(input){
+    result = aggregate(input$Value,
+                        list(Method=input$Method,
+                        Measure=input$Measure),
+                        mean) %>%
+            rename(Value=x)
+    result = suppressWarnings( # suppress different factor levels warning
+        left_join(result,
+                  distinct(select(input,
+                                  Method, Class, Subclass, Subsubclass)),
+                  by="Method")
+    )
+    return(result)
+}
+
+plotStatsKnnTestSet = function(stats, performanceMeasure)
 {
     shapes.ids = c(21,22,23,24,25,21,22,23)
 
@@ -31,7 +62,7 @@ plotStatsTrainingSet = function(stats, performanceMeasure)
         geom_point(size=3, color="black") +
         ggtitle("Original models") +
         scale_shape_manual(values=shapes.ids) +
-        scale_color_manual(values=c("#D73027","#FC8D59","#FCBE23","#77D9F4","#91BFDB","#91BFDB")) +
+        # scale_color_manual(values=c("#D73027","#FC8D59","#FCBE23","#77D9F4","#91BFDB","#91BFDB")) +
         scale_fill_brewer(palette = "RdYlBu") +
         xlab("Level of missing data") +
         ylab(ifelse(performanceMeasure=="Cost matrix", "Total cost", performanceMeasure)) +
@@ -72,11 +103,10 @@ plotStatsTrainingSet = function(stats, performanceMeasure)
         coord_cartesian(xlim=LIM.X, ylim=c(50, ymax.val)) +
         scale_x_continuous(breaks=BREAKS.X)
 
-
-    c = ggplot(data=subset(stats, Class=="Aggregation" & Measure==performanceMeasure),
+    c = ggplot(data=subset(stats, (Class=='Similarity') & Measure==performanceMeasure),
                aes(x=ObscureLevel, y=Value, group=Method, colour=Method)) +
         geom_line(colour="black", alpha=0.5) +
-        facet_grid(Class ~ Subclass + Subsubclass) +
+        facet_grid(. ~ Subclass) +
         ggtitle("Top 5 aggregation operators") +
         xlab("Level of missing data") +
         ylab(ifelse(performanceMeasure=="Cost matrix", "Total cost", performanceMeasure)) +
@@ -92,12 +122,50 @@ plotStatsTrainingSet = function(stats, performanceMeasure)
         scale_x_continuous(breaks=BREAKS.X) +
         scale_color_manual(values=colorRampPalette(brewer.pal(9, "Paired"))(length(unique(stats$Method))))
 
-    # Similarities
-    d = ggplot(data=subset(stats, Class=="Similarity" & Subclass=="knn" & Measure==performanceMeasure),
+    grid.arrange(arrangeGrob(a, b, nrow=1),
+                 arrangeGrob(c, nrow=1),
+                 nrow=2, heights=unit(c(0.45, 0.45), "npc"))
+
+}
+
+plotStatsTrainingSet = function(stats, performanceMeasure)
+{
+    shapes.ids = c(21,22,23,24,25,21,22,23)
+
+    ymax.val = 1.1*max(subset(stats, Class=="Model" & Measure==performanceMeasure)$Value)
+
+    stats$Method = gsub("orig. ", "", stats$Method)
+    stats$Method = gsub("unc. ",  "", stats$Method)
+
+    a = ggplot(data=subset(stats, Class=="Model" & Subclass=="Original" & Measure==performanceMeasure),
                aes(x=ObscureLevel, y=Value, group=Method, colour=Method, shape=Method, fill=Method)) +
         geom_line() +
         geom_point(size=3, color="black") +
         ggtitle("Original models") +
+        scale_shape_manual(values=shapes.ids) +
+        # scale_color_manual(values=c("#D73027","#FC8D59","#FCBE23","#77D9F4","#91BFDB","#91BFDB")) +
+        scale_fill_brewer(palette = "RdYlBu") +
+        xlab("Level of missing data") +
+        ylab(ifelse(performanceMeasure=="Cost matrix", "Total cost", performanceMeasure)) +
+        theme_bw() +
+        theme(legend.position="bottom",
+              plot.margin=unit(c(0.02, 0.05, 0.00, 0.05), "npc"),
+              legend.margin=unit(0.05, "npc"),
+              panel.margin = unit(0.07, "npc"),
+              axis.text.x=element_text(size=9),
+              strip.text.x=element_text(size=9),
+              axis.title.x = element_text(vjust=-0.5),
+              axis.title.y = element_text(vjust=1.5),
+              title = element_text(vjust=1.2)) +
+        coord_cartesian(xlim=LIM.X, ylim=c(50, ymax.val)) +
+        scale_x_continuous(breaks=BREAKS.X)
+
+    b = ggplot(data=subset(stats, Class=="Model" & Subclass=="Uncertaintified" &
+                               Measure==performanceMeasure),
+               aes(x=ObscureLevel, y=Value, group=Method, colour=Method, shape=Method, fill=Method)) +
+        geom_line() +
+        geom_point(size=3, color="black") +
+        ggtitle("Uncertaintified models") +
         scale_shape_manual(values=shapes.ids) +
         scale_color_manual(values=c("#D73027","#FC8D59","#FCBE23","#77D9F4","#91BFDB","#91BFDB")) +
         scale_fill_brewer(palette = "RdYlBu") +
@@ -116,7 +184,26 @@ plotStatsTrainingSet = function(stats, performanceMeasure)
         coord_cartesian(xlim=LIM.X, ylim=c(50, ymax.val)) +
         scale_x_continuous(breaks=BREAKS.X)
 
-    grid.arrange(arrangeGrob(a, b, d, nrow=1),
+    c = ggplot(data=subset(stats, (Class=='Similarity') & Measure==performanceMeasure),
+               aes(x=ObscureLevel, y=Value, group=Method, colour=Method)) +
+        geom_line(colour="black", alpha=0.5) +
+        facet_grid(Subsubclass ~ Subclass) +
+        ggtitle("Top 5 aggregation operators") +
+        xlab("Level of missing data") +
+        ylab(ifelse(performanceMeasure=="Cost matrix", "Total cost", performanceMeasure)) +
+        theme_bw() +
+        theme(legend.position="none",
+              plot.margin=unit(c(0.05, 0.01, 0, 0.02), "npc"),
+              panel.margin = unit(0.02, "npc"),
+              axis.text.x=element_text(size=9),
+              axis.title.x = element_text(vjust=-0.5),
+              axis.title.y = element_text(vjust=1.5),
+              title = element_text(vjust=1.2)) +
+        coord_cartesian(xlim=LIM.X, ylim=c(0, ymax.val)) +
+        scale_x_continuous(breaks=BREAKS.X) +
+        scale_color_manual(values=colorRampPalette(brewer.pal(9, "Paired"))(length(unique(stats$Method))))
+
+    grid.arrange(arrangeGrob(a, b, nrow=1),
                  arrangeGrob(c, nrow=1),
                  nrow=2, heights=unit(c(0.45, 0.45), "npc"))
 
@@ -223,7 +310,7 @@ plotStatsTestSet = function(stats, performanceMeasure,
         geom_text(aes(y=Value+0.01, label=round(Value, 2), ymax=1),
                   position=position_dodge(width=0.9), vjust=0, size=2.8)
 
-    aggrs.perf.measure = subset(stats, Measure==performanceMeasure & Class=="Aggregation") %>%
+    aggrs.perf.measure = subset(stats, Measure==performanceMeasure & Class=="Similarity") %>%
         group_by(Class, Subclass, Subsubclass)
 
     if (performanceMeasureDescending) {
@@ -240,7 +327,8 @@ plotStatsTestSet = function(stats, performanceMeasure,
                    weight=Value,
                    fill=paste(Subclass, Subsubclass)), environment=environment()) +
         geom_bar(width = 0.8, position = position_identity(width=0.8), color="black") +
-        scale_fill_manual(values=c("#FE9929","#1D91C0","#42AB5D","#EF3B2C","#7A1977","#53278F","#EF6547","#ADDD8E")) +
+        #     add custom color list
+        # scale_fill_manual(values=c("#FE9929","#1D91C0","#42AB5D","#EF3B2C","#7A1977","#53278F","#EF6547","#ADDD8E")) +
         xlab("Aggregation group by the lowest cost") +
         ylab(ifelse(performanceMeasure=="Cost matrix", "Total cost", performanceMeasure)) +
         theme_bw() +
@@ -270,8 +358,7 @@ plotStatsTestSet = function(stats, performanceMeasure,
               strip.text.x=element_text(size=8.35)) +
         geom_text(aes(y=Value+0.01, label=round(Value, 2), ymax=1),
                   position=position_dodge(width=0.9), vjust=0, size=2.7) +
-        facet_grid(. ~ Subclass + Subsubclass, scales = "free_x")
-
+        facet_grid( .~ Subclass + Subsubclass, scales = "free_x")
 
     g_legend<-function(a.gplot){
         tmp <- ggplot_gtable(ggplot_build(a.gplot))

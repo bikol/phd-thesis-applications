@@ -396,13 +396,6 @@ test.stats.all.perf.wide          = dcast(test.stats.all.perf,
 #
 # printDebug("aggregators selection and statistical tests")
 #
-# selected.aggrs = subset(test.stats.all.wide,
-#                         Class=="Aggregation" &
-#                             Decisiveness>=0.95 &
-#                             Decisiveness<1.0 &
-#                             Sensitivity>Specificity &
-#                             Sensitivity>=0.90 &
-#                             Specificity>0.8)
 #
 # perf.selected.aggrs = subset(binded.stats.all.perf,
 #                              Measure==PERFORMANCE.MEASURE &
