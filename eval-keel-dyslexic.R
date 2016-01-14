@@ -65,7 +65,7 @@ if (THREADS > 1)
                               'DATA.COLS.NUM', 'read.keel', 'KEEL.DATABASE.LOCATION',
                               'multiclassToOutcome', 'filter', 'bind_rows','mutate', '%>%',
                               'printDebug', 'DEBUG'))
-    usedLapply = function(...){ parLapplyLB(CL, ...) }
+    usedLapply = function(...){ clusterApplyLB(CL, ...) }
 } else {
     usedLapply = lapply
 }
@@ -250,46 +250,6 @@ printDebug("convert statistics performance to wide format")
 training.stats.all.perf.wide = dcast(training.stats.all.perf,
                                     Method + Class + Subclass + Subsubclass ~ Measure,
                                     value.var="Value")
-
-
-# # ---- aggregators-selection-and-statistical-tests ----
-#
-#   to be moved into result visualisation script
-#
-# printDebug("aggregators selection and statistical tests")
-#
-# selected.aggrs = subset(test.stats.all.wide,
-#                         Class=="Aggregation" &
-#                             Decisiveness>=0.95 &
-#                             Decisiveness<1.0 &
-#                             Sensitivity>Specificity &
-#                             Sensitivity>=0.90 &
-#                             Specificity>0.8)
-#
-# perf.selected.aggrs = subset(binded.stats.all.perf,
-#                              Measure==PERFORMANCE.MEASURE &
-#                                  Method %in% selected.aggrs$Method)
-#
-#
-# perf.all = rbind(perf.selected.aggrs,
-#                  subset(binded.stats.all.perf,
-#                         Measure==PERFORMANCE.MEASURE & Class=="Model" & Subclass=="Uncertaintified"))
-#
-# outcomes.all = bind_cols(select(outcomes.models.unc, -(PatientId:ObscureRepeat)),
-#                          select(outcomes.aggrs,      -(PatientId:ObscureRepeat)))
-#
-# pvals = sapply(subset(perf.all, Class=="Aggregation")$Method, function(a1) {
-#     sapply(perf.all$Method, function(a2) {
-#         mcn.test(outcomes.all[a1], outcomes.all[a2])
-#     })
-# })
-#
-# pvals[upper.tri(pvals, diag=TRUE)] = NA
-#
-# pvals = matrix(p.adjust(pvals, method = "BH",
-#                         n=sum(!is.na(pvals)|is.nan(pvals))),
-#                nrow=nrow(pvals),
-#                dimnames=list(rownames(pvals), colnames(pvals)))
 
 # ---- parallel-shutdown ----
 

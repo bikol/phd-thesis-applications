@@ -18,7 +18,6 @@ LEGEND.SPACING = 5
 classesForOEA = function(df){
     df[df$Method == "mean_(dec_(owa_min))_cen_0.025", ]$Class = 'Model'
     df[df$Method == "mean_(dec_(owa_min))_cen_0.025", ]$Subclass = 'Original'
-    df[df$Method == "mean_(dec_(owa_min))_cen_0.025", ]$Subsubclass = NA
     df[df$Method == "mean_(dec_(owa_min))_cen_0.025", ]$Method = "OEA"
     return(df)
 }
@@ -128,6 +127,67 @@ plotStatsKnnTestSet = function(stats, performanceMeasure)
 
 }
 
+plotStatsKnnTestSet2 = function(stats, performanceMeasure)
+{
+    shapes.ids = c(21,22,23,24,25,20,27)
+
+    ymax.val = 1.1*max(subset(stats, Class=="Model" & Measure==performanceMeasure)$Value)
+
+    stats$Method = gsub("orig. ", "", stats$Method)
+    stats$Method = gsub("unc. ",  "", stats$Method)
+
+    stats$Method = factor(stats$Method, levels=c("Alc", "ivfc_(J_min_id)_cen_max", "ivfc_(J_min_id)_max_max",
+                                                 "ivfc_(J_min_id)_mean_1_max", "ivfc_(J_SS_m5_id)_cen_max", "ivfc_(J_SS_m5_id)_mean_1_max",
+                                                 "knn_5_(J_min_id)_(cen)_maj", "knn_5_(J_min_id)_(lat)_maj", "knn_5_(J_SS_m1_id)_(cen)_maj",
+                                                 "knn_5_(J_SS_m2_id)_(cen)_maj", "knn_5_(J_SS_m5_id)_(cen)_maj",
+                                                 "LR1", "LR2", "RMI", "SM", "Tim", "OEA"))
+
+    a = ggplot(data=subset(stats, Class=="Model" & Subclass=="Original" & Measure==performanceMeasure),
+               aes(x=ObscureLevel, y=Value, group=Method, colour=Method, shape=Method, fill=Method)) +
+        geom_line() +
+        geom_point(size=3, color="black") +
+        ggtitle("modele referencyjne") +
+        scale_shape_manual(values=shapes.ids) +
+        scale_color_manual(values=c("#D73027","#FC8D59","#FCBE23","#77D9F4","#91BFDB","#91BFDB","#36c7ab")) +
+        scale_fill_manual(values=c("#D73027","#FC8D59","#FCBE23","#77D9F4","#91BFDB","#91BFDB","#36c7ab")) +
+        xlab("Level of missing data") +
+        ylab(ifelse(performanceMeasure=="Cost matrix", "całkowity koszt", performanceMeasure)) +
+        theme_bw() +
+        theme(legend.position="bottom",
+              plot.margin=unit(c(0.02, 0.05, 0.00, 0.05), "npc"),
+              legend.margin=unit(0.05, "npc"),
+              panel.margin = unit(0.07, "npc"),
+              axis.text.x=element_text(size=9),
+              strip.text.x=element_text(size=9),
+              axis.title.x = element_text(vjust=-0.5),
+              axis.title.y = element_text(vjust=1.5),
+              title = element_text(vjust=1.2)) +
+        coord_cartesian(xlim=LIM.X, ylim=c(50, ymax.val)) +
+        scale_x_continuous(breaks=BREAKS.X)
+
+    c = ggplot(data=subset(stats, (Class=='Similarity') & Measure==performanceMeasure),
+               aes(x=ObscureLevel, y=Value, group=Method, colour=Method)) +
+        geom_line(colour="black", alpha=0.5) +
+        facet_grid(. ~ Subsubclass) +
+        ggtitle("5 najlepszych metod klasyfikacji") +
+        xlab("poziom braku danych") +
+        ylab(ifelse(performanceMeasure=="Cost matrix", "całkowity koszt", performanceMeasure)) +
+        theme_bw() +
+        theme(legend.position="none",
+              plot.margin=unit(c(0.05, 0.01, 0, 0.02), "npc"),
+              panel.margin = unit(0.02, "npc"),
+              axis.text.x=element_text(size=9),
+              axis.title.x = element_text(vjust=-0.5),
+              axis.title.y = element_text(vjust=1.5),
+              title = element_text(vjust=1.2)) +
+        coord_cartesian(xlim=LIM.X, ylim=c(0, ymax.val)) +
+        scale_x_continuous(breaks=BREAKS.X) +
+        scale_color_manual(values=colorRampPalette(brewer.pal(9, "Paired"))(length(unique(stats$Method))))
+
+    grid.arrange(a,c, nrow=2, heights=unit(c(0.5, 0.4), "npc"))
+
+}
+
 plotStatsTrainingSet = function(stats, performanceMeasure)
 {
     shapes.ids = c(21,22,23,24,25,21,22,23)
@@ -209,6 +269,67 @@ plotStatsTrainingSet = function(stats, performanceMeasure)
 
 }
 
+
+plotStatsTrainingSet2 = function(stats, performanceMeasure)
+{
+    shapes.ids = c(21,22,23,24,25,20,27)
+
+    ymax.val = 1.1*max(subset(stats, Class=="Model" & Measure==performanceMeasure)$Value)
+
+    stats$Method = gsub("orig. ", "", stats$Method)
+    stats$Method = gsub("unc. ",  "", stats$Method)
+
+    stats$Method = factor(stats$Method, levels=c("Alc", "ivfc_(J_min_id)_cen_max", "ivfc_(J_min_id)_max_max",
+                                                  "ivfc_(J_min_id)_mean_1_max", "ivfc_(J_SS_m5_id)_cen_max", "ivfc_(J_SS_m5_id)_mean_1_max",
+                                                  "knn_5_(J_min_id)_(cen)_maj", "knn_5_(J_min_id)_(lat)_maj", "knn_5_(J_SS_m1_id)_(cen)_maj",
+                                                  "knn_5_(J_SS_m2_id)_(cen)_maj", "knn_5_(J_SS_m5_id)_(cen)_maj",
+                                                  "LR1", "LR2", "RMI", "SM", "Tim", "OEA"))
+    a = ggplot(data=subset(stats, Class=="Model" & Subclass=="Original" & Measure==performanceMeasure),
+               aes(x=ObscureLevel, y=Value, group=Method, colour=Method, shape=Method, fill=Method)) +
+        geom_line() +
+        geom_point(size=3, color="black") +
+        ggtitle("modele referencyjne") +
+        scale_shape_manual(values=shapes.ids) +
+        scale_color_manual(values=c("#D73027","#FC8D59","#FCBE23","#77D9F4","#91BFDB","#91BFDB","#36c7ab")) +
+        scale_fill_manual(values=c("#D73027","#FC8D59","#FCBE23","#77D9F4","#91BFDB","#91BFDB","#36c7ab")) +
+        xlab("poziom braku danych") +
+        ylab(ifelse(performanceMeasure=="Cost matrix", "całkowity koszt", performanceMeasure)) +
+        theme_bw() +
+        theme(legend.position="bottom",
+              plot.margin=unit(c(0.02, 0.05, 0.00, 0.05), "npc"),
+              legend.margin=unit(0.05, "npc"),
+              panel.margin = unit(0.07, "npc"),
+              axis.text.x=element_text(size=9),
+              strip.text.x=element_text(size=9),
+              axis.title.x = element_text(vjust=-0.5),
+              axis.title.y = element_text(vjust=1.5),
+              title = element_text(vjust=1.2)) +
+        coord_cartesian(xlim=LIM.X, ylim=c(50, ymax.val)) +
+        scale_x_continuous(breaks=BREAKS.X)
+
+
+    c = ggplot(data=subset(stats, (Class=='Similarity') & Measure==performanceMeasure),
+               aes(x=ObscureLevel, y=Value, group=Method, colour=Method)) +
+        geom_line(colour="black", alpha=0.5) +
+        facet_grid(. ~ Subsubclass) +
+        ggtitle("5 najlepszych metod klasyfikacji") +
+        xlab("poziom braku danych") +
+        ylab(ifelse(performanceMeasure=="Cost matrix", "całkowity koszt", performanceMeasure)) +
+        theme_bw() +
+        theme(legend.position="bottom",
+              plot.margin=unit(c(0.05, 0.01, 0, 0.02), "npc"),
+              panel.margin = unit(0.02, "npc"),
+              axis.text.x=element_text(size=9),
+              axis.title.x = element_text(vjust=-0.5),
+              axis.title.y = element_text(vjust=1.5),
+              title = element_text(vjust=1.2)) +
+        coord_cartesian(xlim=LIM.X, ylim=c(0, ymax.val)) +
+        scale_x_continuous(breaks=BREAKS.X) +
+        scale_color_manual(values=colorRampPalette(brewer.pal(9, "Paired"))(length(unique(stats$Method))))
+
+    grid.arrange(a,c, nrow=2, heights=unit(c(0.5, 0.4), "npc"))
+
+}
 
 plotStatsTestSet = function(stats, performanceMeasure,
                              performanceMeasureDescending, secondaryPerformanceMeasures)
